@@ -115,8 +115,8 @@ COMPANIES = [
     {
         "ticker":    "AIS",
         "name":      "Aeris Resources Limited",
-        "shares_m":  1150.0,
-        "shares_src":"Investor Pres / Q3 FY26 Quarterly Activities Report, Apr-2026",
+        "shares_m":  1197.168782,
+        "shares_src":"Confirmed: 1,197,168,782 shares on issue",
         "cash_m":    149.8,
         "debt_m":    0.0,
         "qtr":       "31-Mar-26",
