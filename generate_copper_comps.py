@@ -241,24 +241,6 @@ COMPANIES = [
         "note":      "PRE-PRODUCTION. Nifty SX-EW cathode restart (Pilbara, WA). Phase 1 ~7 ktpa Cu; Phase 2 potential ~25 ktpa. US$27.3M Nebari facility ≈ A$42M @ 0.645.",
     },
     {
-        "ticker":    "CSC",
-        "name":      "Capstone Copper Corp.",
-        "shares_m":  763.7,
-        "shares_src":"Q1 CY26 MD&A (Canadian disclosure), 29-Apr-2026",
-        "cash_m":    611.0,   # US$394.1M converted @ 0.645 AUDUSD
-        "debt_m":    1754.0,  # US$1,131.8M converted @ 0.645 AUDUSD
-        "qtr":       "31-Mar-26",
-        "cu_kt":     215.0,   # CY2026: 200–230 kt Cu (midpoint; copper-only figure)
-        "au_koz":    0.0,
-        "ag_koz":    0.0,
-        "zn_kt":     0.0,
-        "pb_kt":     0.0,
-        "disc_cueq": 0.0,
-        "flag":      "‡",
-        "gsrc":      "CY2026 production guidance (200–230 kt Cu); Q1 CY26 Results, 29-Apr-2026 (Pinto Valley AZ + Cozamin MX + Mantos Blancos CL + Mantoverde CL)",
-        "note":      "Canadian co. / ASX CDI (1:1). All financials in USD, converted @ 0.645 AUDUSD. Files Canadian MD&A (not App 5B). Co-products (Ag, Au, Mo) add incremental CuEq – not quantified here.",
-    },
-    {
         "ticker":    "SFR",
         "name":      "Sandfire Resources Limited",
         "shares_m":  466.6,
@@ -670,11 +652,6 @@ def build_comps(ws, ws_asmpt_name="Assumptions"):
          "Cyprium Metals is pre-production. Phase 1 Nifty SX-EW cathode restart is targeting first production in Q3 CY2026 "
          "at a run-rate of approximately 7,000 tpa Cu cathode. CuEq figure shown is the annualised Phase 1 run-rate, not FY2026 actual production. "
          "EV/CuEq for CYM should be interpreted as a development-stage multiple, not a producing-company multiple."),
-        ("CSC note",
-         "Capstone Copper Corp. is a Canadian company listed on ASX via CHESS Depository Interests (CDIs, 1:1 ratio). "
-         "All financials are in USD converted to AUD at 0.645 (approximate implied rate at data sourcing). "
-         "Capstone does not file ASX Appendix 5B; financial data is sourced from Canadian MD&A (Q1 CY2026, 29-Apr-2026). "
-         "Its scale (200–230 kt Cu guidance) is substantially larger than other peers in this table."),
         ("DVP note",
          "Develop Global: 22 kt CuEq used per confirmed guidance. Woodlawn (NSW) Cu/Zn/Pb/Ag polymetallic. "
          "Formal FY2026 annual Cu/Zn guidance in kt has not been published as a specific annual target. "
@@ -682,7 +659,7 @@ def build_comps(ws, ws_asmpt_name="Assumptions"):
         ("Net (Cash)/Debt",
          "Shown using accounting convention: positive = net debt position; parenthetical (negative) = net cash position. "
          "Figures from most recent Appendix 5B quarterly cashflow report (March 2026 quarter). "
-         "USD-denominated debt (29M: US$120M RCF; CYM: US$27.3M Nebari; CSC: US$1,131.8M) converted at 0.645 AUDUSD."),
+         "USD-denominated debt (29M: US$120M RCF; CYM: US$27.3M Nebari) converted at 0.645 AUDUSD."),
         ("Data pull date",
          "Financial data and production guidance sourced from ASX announcements released April–May 2026 "
          "(reflecting March 2026 quarter). Share prices are live via IRESS RTD. Metal prices are live via IRESS RTD. "
