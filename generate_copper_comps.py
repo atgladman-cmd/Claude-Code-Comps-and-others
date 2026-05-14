@@ -163,10 +163,10 @@ COMPANIES = [
         "ag_koz":    0.0,
         "zn_kt":     30.0,    # Woodlawn ~30+ ktpa Zn in concentrate
         "pb_kt":     0.0,
-        "disc_cueq": 0.0,
-        "flag":      "‡",
-        "gsrc":      "Woodlawn LOM run-rate (~10 ktpa Cu, ~30 ktpa Zn); FY2026 specific annual guidance not formally published; Q3 FY26 Quarterly, Apr-2026",
-        "note":      "Woodlawn (NSW): Cu/Zn/Pb/Ag polymetallic. Also has large mining services division (>A$50M/qtr revenue). Pb & Ag guidance not quantified.",
+        "disc_cueq": 22.0,
+        "flag":      "†",
+        "gsrc":      "22 kt CuEq (user-confirmed); Woodlawn (NSW) Cu/Zn/Pb/Ag; Q3 FY26 Quarterly, Apr-2026",
+        "note":      "Woodlawn (NSW): Cu/Zn/Pb/Ag polymetallic. Also has large mining services division (>A$50M/qtr revenue). 22 kt CuEq used per instruction.",
     },
     {
         "ticker":    "29M",
@@ -663,7 +663,7 @@ def build_comps(ws, ws_asmpt_name="Assumptions"):
          "AIS (40–49 kt, FY2026) and SFR (149–165 kt, FY2026): CuEq as disclosed by the company in quarterly activities reports. "
          "Each company's own price assumptions are embedded in those figures."),
         ("‡  Calculated CuEq",
-         "A1M, DVP, 29M, AMI, CSC: CuEq calculated from individual metal production guidance midpoints using live IRESS spot prices "
+         "A1M, 29M, AMI, CSC: CuEq calculated from individual metal production guidance midpoints using live IRESS spot prices "
          "(Copper COPNY.ID, Gold SPTGLD.IF, Silver SPTSLV.IF, Zinc ZINC.LME, Lead LEAD.LME). "
          "Figures will change in real-time as spot prices move."),
         ("§  Pre-production run-rate (CYM)",
@@ -676,7 +676,7 @@ def build_comps(ws, ws_asmpt_name="Assumptions"):
          "Capstone does not file ASX Appendix 5B; financial data is sourced from Canadian MD&A (Q1 CY2026, 29-Apr-2026). "
          "Its scale (200–230 kt Cu guidance) is substantially larger than other peers in this table."),
         ("DVP note",
-         "Develop Global's Woodlawn annual copper and zinc guidance figures are LOM run-rate estimates. "
+         "Develop Global: 22 kt CuEq used per confirmed guidance. Woodlawn (NSW) Cu/Zn/Pb/Ag polymetallic. "
          "Formal FY2026 annual Cu/Zn guidance in kt has not been published as a specific annual target. "
          "Pb and Ag co-product guidance is not quantified and has been excluded from the CuEq calculation."),
         ("Net (Cash)/Debt",
