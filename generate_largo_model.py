@@ -4,7 +4,7 @@ Largo Resources (LGO) — Q2 2026 Quarterly Earnings Model
 V2O5 price scenarios: US$5.00/lb  |  US$7.50/lb  |  US$10.00/lb
 
 Sheets:
-  1. Q2 2026 Model   – three-scenario P&L forecast
+  1. Q2 2026 Model   – live market data header + three-scenario P&L + EV multiples
   2. Historical      – nine quarters of actuals (Q1 2024 – Q1 2026)
 """
 
@@ -33,16 +33,20 @@ C_RED     = "FCE4D6"
 C_GREENDK = "375623"
 C_REDDK   = "9C0006"
 C_YELLOWDK= "7F6000"
+C_TEAL    = "1F7E79"
+C_TEALLI  = "D6F0EF"
 
 # Number formats
-FMT_ACCT  = '_-"$"* #,##0.0_-;[Red]_-"$"* (#,##0.0)_-;_-"$"* "-"??_-;_-@_-'
-FMT_PCT   = '0.0%'
-FMT_EPS   = '_-"$"* #,##0.00_-;[Red]_-"$"* (#,##0.00)_-;_-"$"* "-"??_-;_-@_-'
-FMT_PRICE = '"US$"#,##0.00'
-FMT_TONNE = '#,##0'
-FMT_MLBS  = '#,##0.00'
-FMT_USD_T = '"US$"#,##0'
-FMT_PER_LB= '"US$"#,##0.00"/lb"'
+FMT_ACCT   = '_-"US$"* #,##0.0_-;[Red]_-"US$"* (#,##0.0)_-;_-"US$"* "-"??_-;_-@_-'
+FMT_PCT    = '0.0%'
+FMT_EPS    = '_-"US$"* #,##0.00_-;[Red]_-"US$"* (#,##0.00)_-;_-"US$"* "-"??_-;_-@_-'
+FMT_SHARE  = '"US$"#,##0.000'
+FMT_TONNE  = '#,##0'
+FMT_MLBS   = '#,##0.00'
+FMT_USD_T  = '"US$"#,##0'
+FMT_PER_LB = '"US$"#,##0.00"/lb"'
+FMT_MULT   = '#,##0.0"×"'
+FMT_SHS_M  = '#,##0.0"M"'
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -57,8 +61,8 @@ def pfill(hex_col):
 def aln(h="left", v="center", wrap=False):
     return Alignment(horizontal=h, vertical=v, wrap_text=wrap)
 
-def bdr(col=C_BORDER):
-    s = Side(style="thin", color=col)
+def bdr(bc=C_BORDER):
+    s = Side(style="thin", color=bc)
     return Border(left=s, right=s, top=s, bottom=s)
 
 def bdr_none():
@@ -85,9 +89,11 @@ def sc(cell, bold=False, sz=10, fc=C_BLACK, italic=False,
     if num_fmt:
         cell.number_format = num_fmt
 
-def w(ws, row, col, val=None, **kwargs):
+def wcell(ws, row, col, val=None, formula=None, **kwargs):
     c = ws.cell(row=row, column=col)
-    if val is not None:
+    if formula is not None:
+        c.value = formula
+    elif val is not None:
         c.value = val
     sc(c, **kwargs)
     return c
@@ -101,52 +107,63 @@ def mtitle(ws, row, c1, c2, text, bold=True, sz=12,
         ws.row_dimensions[row].height = ht
     return c
 
-def section_hdr(ws, row, c1, c2, text):
+def sec_hdr(ws, row, c1, c2, text, bg=C_NAVY2):
     ws.merge_cells(start_row=row, start_column=c1, end_row=row, end_column=c2)
     c = ws.cell(row=row, column=c1, value=text)
-    sc(c, bold=True, sz=9, fc=C_WHITE, bg=C_NAVY2, h="left", no_border=True)
+    sc(c, bold=True, sz=9, fc=C_WHITE, bg=bg, h="left", no_border=True)
     ws.row_dimensions[row].height = 14
     return c
 
 
+def val_color(v, tol=0.0):
+    if v is None:
+        return C_LGREY, C_DGREY
+    if v > tol:
+        return C_GREEN, C_GREENDK
+    if v < -tol:
+        return C_RED, C_REDDK
+    return C_YELLOW, C_YELLOWDK
+
+
 # ─────────────────────────────────────────────────────────────────────────────
-# MODEL INPUTS & CALCULATIONS
+# MODEL INPUTS
 # ─────────────────────────────────────────────────────────────────────────────
-LB_PER_T  = 2204.6226          # lb per metric tonne
+LB_PER_T    = 2204.6226
+PRICES_LB   = [5.00, 7.50, 10.00]
 
-PRICES_LB = [5.00, 7.50, 10.00]
+# Q2 2026 cost assumptions (US$M) — anchored to Q1 2026 actuals (FactSet Final)
+VOLUME_T    = 2400             # tonnes V2O5 sold Q2-2026 (est.)
+ANN_PROD_T  = 9600             # annualised production (×4); used for EV/t
+CASH_COGS   = 27.5             # cash operating costs ex-D&A  (Q1-26: $27.6M)
+DA          = 7.0              # D&A  (Q1-26: $7.1M)
+COGS_TOTAL  = CASH_COGS + DA   # = 34.5
+SGA         = 4.5              # SG&A  (Q1-26: $4.5M)
+NET_INT     = 2.5              # net interest expense (est. ~US$108M debt @ ~9.3%pa)
+TAX_RATE    = 0.34             # Brazil CSLL/IRPJ; applied to positive EBT only
 
-# Q2 2026 cost assumptions (US$M) — anchored to Q1 2026 actuals (FactSet)
-VOLUME_T   = 2400              # tonnes V2O5 sold (annualised ~9,600t; est.)
-CASH_COGS  = 27.5              # cash operating costs ex D&A  (Q1-26: $27.6M)
-DA         = 7.0               # D&A  (Q1-26: $7.1M)
-COGS_TOTAL = CASH_COGS + DA    # = 34.5
-SGA        = 4.5               # SG&A  (Q1-26: $4.5M)
-NET_INT    = 2.5               # net interest expense (est. ~$108M debt @ ~9.3%)
-TAX_RATE   = 0.34              # Brazilian CSLL/IRPJ (applied to +EBT only)
+SHARES_M    = 88.31            # shares on issue (M) — Nov 2025 filing
+IRESS_TICK  = "LGO"            # IRESS RTD ticker for LGO (NASDAQ, USD)
 
-SHARES_M   = 88.31             # shares on issue (millions)
+# Balance sheet — Q1 2026 (31 Mar 2026, FactSet Final, reported 13 May 2026)
+TOTAL_DEBT  = 108.4            # US$M
+NET_DEBT    = 96.8             # US$M  (= Total Debt – Cash of US$11.6M)
+CASH_BS     = TOTAL_DEBT - NET_DEBT
 
-# Balance sheet (31 Mar 2026, FactSet)
-TOTAL_DEBT = 108.4             # US$M
-NET_DEBT   = 96.8              # US$M
-CASH_BS    = TOTAL_DEBT - NET_DEBT   # ~11.6
-
-# Breakeven prices (US$/lb)
-VOL_MLBS   = VOLUME_T * LB_PER_T / 1e6
-BE_EBITDA  = (CASH_COGS + SGA)       / VOL_MLBS
-BE_EBIT    = (COGS_TOTAL + SGA)      / VOL_MLBS
-BE_NI      = (COGS_TOTAL + SGA + NET_INT) / VOL_MLBS
+# Breakeven prices (US$/lb) at VOLUME_T
+VOL_MLBS    = VOLUME_T * LB_PER_T / 1e6
+BE_EBITDA   = (CASH_COGS + SGA)            / VOL_MLBS
+BE_EBIT     = (COGS_TOTAL + SGA)           / VOL_MLBS
+BE_NI       = (COGS_TOTAL + SGA + NET_INT) / VOL_MLBS
 
 
 def scen(price_lb):
-    rev        = VOLUME_T * price_lb * LB_PER_T / 1e6
-    gross      = rev - COGS_TOTAL
-    ebit       = gross - SGA
-    ebitda     = ebit + DA
-    ebt        = ebit - NET_INT
-    tax        = ebt * TAX_RATE if ebt > 0 else 0.0
-    net        = ebt - tax
+    rev      = VOLUME_T * price_lb * LB_PER_T / 1e6
+    gross    = rev - COGS_TOTAL
+    ebit     = gross - SGA
+    ebitda   = ebit + DA
+    ebt      = ebit - NET_INT
+    tax      = ebt * TAX_RATE if ebt > 0 else 0.0
+    net      = ebt - tax
     return dict(
         price_lb   = price_lb,
         price_t    = price_lb * LB_PER_T,
@@ -168,419 +185,515 @@ def scen(price_lb):
         net        = net,
         net_mgn    = net / rev,
         eps        = net / SHARES_M,
+        ann_ebitda = ebitda * 4,
     )
 
 SCENS = [scen(p) for p in PRICES_LB]
 
-# Q1 2026 actual (reference column — FactSet Final)
+# Q1 2026 actuals (FactSet Final, reported 13 May 2026)
 ACT = dict(
-    label      = "Q1 2026\nActual",
     rev        = 27.53,
     cogs       = 34.72,
     gross      = 27.53 - 34.72,
     gross_mgn  = (27.53 - 34.72) / 27.53,
     sga        = 4.54,
-    ebit       = -4.59 - 7.13,          # EBITDA – D&A
+    ebit       = -4.59 - 7.13,
     ebit_mgn   = (-4.59 - 7.13) / 27.53,
     da         = 7.13,
     ebitda     = -4.59,
     ebitda_mgn = -4.59 / 27.53,
-    net_int    = None,                   # see note
-    ebt        = None,
     tax        = 0.15,
     net        = -6.29,
     net_mgn    = -6.29 / 27.53,
     eps        = -6.29 / SHARES_M,
+    ann_ebitda = -4.59 * 4,
 )
 
 # Historical actuals (Q1 2024 – Q1 2026, FactSet)
-# (label, rev, cogs, sga, ebitda, da, net_inc, tax_note)
+# (label, rev, cogs, sga, ebitda, da, net_inc, flag)
 HIST = [
-    ("Q1 2024", 42.19, 51.00, 6.46, -6.55,  8.72, -12.97, ""),
-    ("Q2 2024", 28.56, 38.41, 4.79, -8.47,  6.06, -14.28, ""),
-    ("Q3 2024", 29.91, 29.96, 8.57, -3.04,  5.60,  -9.66, ""),
-    ("Q4 2024", 24.27, 30.67, 1.35,  0.46,  7.70, -12.92, ""),
-    ("Q1 2025", 28.24, 42.74, 5.02,-13.84,  5.68,  -9.00, ""),
-    ("Q2 2025", 26.12, 30.31, 3.29, -3.17,  4.48,  -5.67, ""),
-    ("Q3 2025", 33.26, 34.65, 4.63, -0.71,  5.36, -36.56, "†"),
-    ("Q4 2025", 22.27, 26.04, 9.28, -6.35,  6.51, -17.28, ""),
-    ("Q1 2026", 27.53, 34.72, 4.54, -4.59,  7.13,  -6.29, ""),
+    ("Q1 2024", 42.19, 51.00, 6.46,  -6.55,  8.72, -12.97, ""),
+    ("Q2 2024", 28.56, 38.41, 4.79,  -8.47,  6.06, -14.28, ""),
+    ("Q3 2024", 29.91, 29.96, 8.57,  -3.04,  5.60,  -9.66, ""),
+    ("Q4 2024", 24.27, 30.67, 1.35,   0.46,  7.70, -12.92, ""),
+    ("Q1 2025", 28.24, 42.74, 5.02, -13.84,  5.68,  -9.00, ""),
+    ("Q2 2025", 26.12, 30.31, 3.29,  -3.17,  4.48,  -5.67, ""),
+    ("Q3 2025", 33.26, 34.65, 4.63,  -0.71,  5.36, -36.56, "†"),
+    ("Q4 2025", 22.27, 26.04, 9.28,  -6.35,  6.51, -17.28, ""),
+    ("Q1 2026", 27.53, 34.72, 4.54,  -4.59,  7.13,  -6.29, ""),
 ]
 
 
 # ─────────────────────────────────────────────────────────────────────────────
 # BUILD MODEL SHEET
 # ─────────────────────────────────────────────────────────────────────────────
-# Column layout:
-#  A=1  Label               width 34
-#  B=2  Q1 2026 Actual      width 15
-#  C=3  divider             width  2
-#  D=4  $5.00/lb scenario   width 15
-#  E=5  $7.50/lb scenario   width 15
-#  F=6  $10.00/lb scenario  width 15
+#  Col layout:
+#  A=1  Label               width 36
+#  B=2  Live / Q1-26 Actual width 15
+#  C=3  separator           width  2
+#  D=4  $5.00/lb Bear       width 15
+#  E=5  $7.50/lb Base       width 15
+#  F=6  $10.00/lb Bull      width 15
 
 COL_LABEL = 1
-COL_ACT   = 2
+COL_LIVE  = 2   # live mkt data / Q1-26 actual
 COL_SEP   = 3
-COL_S1    = 4
-COL_S2    = 5
-COL_S3    = 6
+COL_S1    = 4   # Bear
+COL_S2    = 5   # Base
+COL_S3    = 6   # Bull
 NCOLS     = 6
-
 SCEN_COLS = [COL_S1, COL_S2, COL_S3]
-SCEN_BGS  = [C_RED, C_YELLOW, C_GREEN]
+SCEN_BGS  = [C_RED,  C_YELLOW, C_GREEN]
 SCEN_TXT  = [C_REDDK, C_YELLOWDK, C_GREENDK]
 
 
-def val_color(v, bg_pos=C_GREEN, bg_neg=C_RED, bg_zero=C_YELLOW, tol=0.0):
-    if v is None:
-        return C_LGREY, C_DGREY
-    if v > tol:
-        return bg_pos, C_GREENDK
-    if v < -tol:
-        return bg_neg, C_REDDK
-    return bg_zero, C_YELLOWDK
-
-
-def w_acct(ws, row, col, val, bg, **kwargs):
-    return w(ws, row, col, val=val, bg=bg, num_fmt=FMT_ACCT, h="right", **kwargs)
-
-
 def build_model(ws):
-    # column widths
-    ws.column_dimensions["A"].width = 34
+
+    ws.column_dimensions["A"].width = 36
     ws.column_dimensions["B"].width = 15
     ws.column_dimensions["C"].width =  2
     ws.column_dimensions["D"].width = 15
     ws.column_dimensions["E"].width = 15
     ws.column_dimensions["F"].width = 15
 
-    R = 1   # current row pointer
+    R = 1   # running row pointer
 
     # ── Title ─────────────────────────────────────────────────────────────────
     ws.row_dimensions[R].height = 26
     mtitle(ws, R, 1, NCOLS,
-           "LARGO RESOURCES (LGO) — Q2 2026 QUARTERLY EARNINGS MODEL",
+           "LARGO RESOURCES (LGO)  —  Q2 2026 QUARTERLY EARNINGS MODEL",
            sz=13, ht=26)
     R += 1
-
     ws.row_dimensions[R].height = 14
     mtitle(ws, R, 1, NCOLS,
-           "V₂O₅ price sensitivity: US$5.00/lb  |  US$7.50/lb  |  US$10.00/lb  "
-           " |  All figures US$M unless stated  |  Source: FactSet / company filings",
+           "V₂O₅ price scenarios: US$5.00/lb  |  US$7.50/lb  |  US$10.00/lb  "
+           " |  All figures US$ unless stated  |  Source: FactSet / IRESS RTD",
            bold=False, sz=9, bg=C_BLUE, ht=14)
     R += 1
 
-    # ── Column headers ────────────────────────────────────────────────────────
-    ws.row_dimensions[R].height = 4   # spacer
-    R += 1
-    ws.row_dimensions[R].height = 36
-
-    hdr_items = [
-        (COL_LABEL, "Line Item",         "left",    C_NAVY, C_WHITE),
-        (COL_ACT,   "Q1 2026\nActual",   "center",  C_NAVY, C_WHITE),
-        (COL_SEP,   "",                  "center",  C_NAVY, C_NAVY),
-        (COL_S1,    "BEAR CASE\nUS$5.00/lb V₂O₅",  "center", "9C0006", C_WHITE),
-        (COL_S2,    "BASE CASE\nUS$7.50/lb V₂O₅",  "center", "7F6000", C_WHITE),
-        (COL_S3,    "BULL CASE\nUS$10.00/lb V₂O₅", "center", "375623", C_WHITE),
-    ]
-    for col, txt, align, bg, fg in hdr_items:
-        w(ws, R, col, val=txt, bold=True, sz=9, fc=fg, bg=bg,
-          h=align, v="center", wrap=True, thick_bot=True)
+    # ── spacer ────────────────────────────────────────────────────────────────
+    ws.row_dimensions[R].height = 5
+    for c in range(1, NCOLS + 1):
+        sc(ws.cell(row=R, column=c), bg=C_WHITE, no_border=True)
     R += 1
 
-    # ── Helper: write one data row ────────────────────────────────────────────
-    def data_row(label, act_val, s_vals, num_fmt=FMT_ACCT,
-                 bold=False, sz=10, indent=False,
-                 pct=False, tol=0.0, use_color=False,
-                 row_ht=16):
+    # ─────────────────────────────────────────────────────────────────────────
+    # LIVE MARKET DATA BLOCK
+    # Rows R=4 through R=13 (inclusive)
+    # B-column cell addresses used for formula cross-references:
+    #   ROW_PRICE   = R+1  (B = IRESS RTD price, US$/share)
+    #   ROW_SHS     = R+2  (B = shares M)
+    #   ROW_MKTCAP  = R+3  (B = =B_PRICE * B_SHS)
+    #   ROW_ND      = R+4  (B = net debt US$M)
+    #   ROW_EV      = R+5  (B = =B_MKTCAP + B_ND)
+    #   ROW_EV_T    = R+6  (B = EV/t ann.)
+    #   ROW_EV_LB   = R+7  (B = EV/lb ann.)
+    # ─────────────────────────────────────────────────────────────────────────
+    sec_hdr(ws, R, 1, NCOLS,
+            f"  LIVE MARKET DATA  (share price via IRESS RTD — ticker: {IRESS_TICK})  "
+            f"|  Net Debt: FactSet Q1 2026 Final (31 Mar 2026, reported 13 May 2026)",
+            bg=C_TEAL)
+    R += 1
+
+    ROW_PRICE  = R
+    ROW_SHS    = R + 1
+    ROW_MKTCAP = R + 2
+    ROW_ND     = R + 3
+    ROW_EV     = R + 4
+    ROW_EV_T   = R + 5
+    ROW_EV_LB  = R + 6
+
+    B_PRICE  = f"$B${ROW_PRICE}"
+    B_SHS    = f"$B${ROW_SHS}"
+    B_MKTCAP = f"$B${ROW_MKTCAP}"
+    B_ND     = f"$B${ROW_ND}"
+    B_EV     = f"$B${ROW_EV}"
+
+    def live_row(label, val=None, formula=None, num_fmt=FMT_ACCT,
+                 bold=False, note_lbl=None, row_ht=17):
         nonlocal R
         ws.row_dimensions[R].height = row_ht
 
-        lbl_bg = C_BGASMP if not indent else C_WHITE
-        lbl_col = C_BLACK
+        lc = ws.cell(row=R, column=COL_LABEL,
+                     value=label + (f"  [{note_lbl}]" if note_lbl else ""))
+        sc(lc, bold=bold, sz=10, fc=C_BLACK if not bold else C_NAVY,
+           bg=C_TEALLI)
 
-        # Label cell
-        lc = ws.cell(row=R, column=COL_LABEL, value=("    " + label if indent else label))
-        sc(lc, bold=bold, sz=sz, fc=lbl_col, bg=lbl_bg, h="left")
+        vc = ws.cell(row=R, column=COL_LIVE)
+        if formula:
+            vc.value = formula
+        elif val is not None:
+            vc.value = val
+        sc(vc, bold=bold, sz=11 if bold else 10, fc=C_NAVY, bg=C_TEALLI,
+           h="right", num_fmt=num_fmt)
 
-        # Actual column
-        ac = ws.cell(row=R, column=COL_ACT)
-        if act_val is not None:
-            ac.value = act_val
-        sc(ac, bold=bold, sz=sz, bg=C_LTBLUE, h="right",
-           num_fmt=(FMT_PCT if pct else num_fmt))
-
-        # Separator
+        # separator + scenario cols greyed out in this block
         sc(ws.cell(row=R, column=COL_SEP), bg=C_LGREY, no_border=True)
-
-        # Scenario columns
-        for ci, (col, sv) in enumerate(zip(SCEN_COLS, s_vals)):
-            sc_bg = SCEN_BGS[ci]
-            sc_txt = SCEN_TXT[ci]
-            if use_color:
-                sc_bg, sc_txt = val_color(sv, tol=tol)
-            cell = ws.cell(row=R, column=col)
-            if sv is not None:
-                cell.value = sv
-            sc(cell, bold=bold, sz=sz, fc=sc_txt, bg=sc_bg, h="right",
-               num_fmt=(FMT_PCT if pct else num_fmt))
+        for c in SCEN_COLS:
+            sc(ws.cell(row=R, column=c), bg=C_LGREY, no_border=True)
         R += 1
 
+    # LGO Last Price (live IRESS RTD)
+    live_row("LGO  Last Price (US$/share) — NASDAQ",
+             formula=f'=@IRESSRtd("Quote","13","0","{IRESS_TICK}")',
+             num_fmt=FMT_SHARE, bold=True)
+
+    live_row("Shares on Issue (millions)",
+             val=SHARES_M, num_fmt=FMT_SHS_M)
+
+    live_row(f"Market Capitalisation (US$M)  =  Price × {SHARES_M:.2f}M shares",
+             formula=f"={B_PRICE}*{B_SHS}",
+             bold=True)
+
+    live_row("Net Debt (US$M)  —  31 Mar 2026  [FactSet FF_NET_DEBT, Q1 2026]",
+             val=NET_DEBT)
+
+    live_row("Enterprise Value (US$M)  =  Mkt Cap + Net Debt",
+             formula=f"={B_MKTCAP}+{B_ND}",
+             bold=True, row_ht=18)
+
+    live_row(f"EV / Annualised V₂O₅ Production (US$/t)  [{ANN_PROD_T:,}t pa est.]",
+             formula=f"={B_EV}*1000000/{ANN_PROD_T}",
+             num_fmt=FMT_USD_T)
+
+    live_row("EV / Annualised V₂O₅ Production (US$/lb)",
+             formula=f"={B_EV}*1000000/{ANN_PROD_T}/{LB_PER_T}",
+             num_fmt=FMT_PER_LB)
+
+    # spacer
+    ws.row_dimensions[R].height = 5
+    for c in range(1, NCOLS + 1):
+        sc(ws.cell(row=R, column=c), bg=C_WHITE, no_border=True)
+    R += 1
+
+    # ── Column headers ────────────────────────────────────────────────────────
+    ws.row_dimensions[R].height = 36
+    HDR_ROW = R
+    hdr_items = [
+        (COL_LABEL, "Line Item",                       "left",   C_NAVY,    C_WHITE),
+        (COL_LIVE,  "Q1 2026\nActual",                 "center", C_NAVY,    C_WHITE),
+        (COL_SEP,   "",                                "center", C_NAVY,    C_NAVY),
+        (COL_S1,    "BEAR CASE\nUS$5.00/lb\nV₂O₅",    "center", "9C0006",  C_WHITE),
+        (COL_S2,    "BASE CASE\nUS$7.50/lb\nV₂O₅",    "center", "7F6000",  C_WHITE),
+        (COL_S3,    "BULL CASE\nUS$10.00/lb\nV₂O₅",   "center", "375623",  C_WHITE),
+    ]
+    for col, txt, align, bg, fg in hdr_items:
+        wcell(ws, R, col, val=txt, bold=True, sz=9, fc=fg, bg=bg,
+              h=align, v="center", wrap=True, thick_bot=True)
+    DATA_START = R + 1
+    R += 1
+
+    # ── Inner helpers ─────────────────────────────────────────────────────────
     def blank_row():
         nonlocal R
         ws.row_dimensions[R].height = 5
-        for col in range(1, NCOLS + 1):
-            c = ws.cell(row=R, column=col)
-            sc(c, bg=C_WHITE, no_border=True)
+        for c in range(1, NCOLS + 1):
+            sc(ws.cell(row=R, column=c), bg=C_WHITE, no_border=True)
         R += 1
 
     def sec(label):
         nonlocal R
-        section_hdr(ws, R, 1, NCOLS, f"  {label}")
+        sec_hdr(ws, R, 1, NCOLS, f"  {label}")
         R += 1
 
-    # ── Section 1: Operating Assumptions ──────────────────────────────────────
+    # data_row: one full row with actual + 3 scenarios
+    # row_type: "value" | "pct" | "mult"
+    def data_row(label, act_val, s_vals,
+                 bold=False, sz=10, indent=False,
+                 row_type="value", use_color=False, tol=0.0, row_ht=16):
+        nonlocal R
+        ws.row_dimensions[R].height = row_ht
+
+        lbl_bg = C_BGASMP if not indent else C_WHITE
+        lc = ws.cell(row=R, column=COL_LABEL,
+                     value=("    " + label if indent else label))
+        sc(lc, bold=bold, sz=sz, fc=C_BLACK, bg=lbl_bg)
+
+        # Actual column
+        ac = ws.cell(row=R, column=COL_LIVE)
+        if act_val is not None:
+            ac.value = act_val
+        nf = (FMT_PCT if row_type == "pct" else
+              FMT_MULT if row_type == "mult" else FMT_ACCT)
+        sc(ac, bold=bold, sz=sz, bg=C_LTBLUE, h="right", num_fmt=nf)
+
+        # separator
+        sc(ws.cell(row=R, column=COL_SEP), bg=C_LGREY, no_border=True)
+
+        # scenario columns
+        for ci, (col, sv) in enumerate(zip(SCEN_COLS, s_vals)):
+            bg = SCEN_BGS[ci]
+            fc = SCEN_TXT[ci]
+            if use_color and sv is not None:
+                bg, fc = val_color(sv, tol=tol)
+            cell = ws.cell(row=R, column=col)
+            if sv is not None:
+                cell.value = sv
+            sc(cell, bold=bold, sz=sz, fc=fc, bg=bg, h="right", num_fmt=nf)
+        R += 1
+
+    # ── Section: Operating Assumptions ───────────────────────────────────────
     sec("OPERATING ASSUMPTIONS")
 
     data_row("V₂O₅ Realised Price (US$/lb)",
-             None,
-             [s["price_lb"] for s in SCENS],
-             num_fmt=FMT_PRICE, bold=True)
+             None, [s["price_lb"] for s in SCENS],
+             bold=True, row_type="value")
+    # patch fmt for price rows
+    for c in SCEN_COLS:
+        ws.cell(row=R-1, column=c).number_format = FMT_PER_LB
 
     data_row("V₂O₅ Realised Price (US$/t)",
-             None,
-             [s["price_t"] for s in SCENS],
-             num_fmt=FMT_USD_T)
+             None, [s["price_t"] for s in SCENS])
+    for c in SCEN_COLS:
+        ws.cell(row=R-1, column=c).number_format = FMT_USD_T
 
     data_row("Sales Volume (t V₂O₅)  ⁽¹⁾",
-             None,
-             [s["vol_t"] for s in SCENS],
-             num_fmt=FMT_TONNE)
+             None, [s["vol_t"] for s in SCENS])
+    for c in SCEN_COLS + [COL_LIVE]:
+        ws.cell(row=R-1, column=c).number_format = FMT_TONNE
 
     data_row("Sales Volume (M lbs V₂O₅)",
-             None,
-             [s["vol_mlb"] for s in SCENS],
-             num_fmt=FMT_MLBS)
+             None, [s["vol_mlb"] for s in SCENS])
+    for c in SCEN_COLS + [COL_LIVE]:
+        ws.cell(row=R-1, column=c).number_format = FMT_MLBS
 
     blank_row()
 
-    # ── Section 2: Income Statement ───────────────────────────────────────────
-    sec("INCOME STATEMENT (US$M)")
+    # ── Section: Income Statement ─────────────────────────────────────────────
+    sec("INCOME STATEMENT  (US$M)")
 
     data_row("Revenue",
-             ACT["rev"],
-             [s["rev"] for s in SCENS],
-             bold=True)
+             ACT["rev"], [s["rev"] for s in SCENS], bold=True)
 
     data_row("Cost of Goods Sold (incl. D&A)  ⁽²⁾",
-             ACT["cogs"],
-             [s["cogs"] for s in SCENS],
-             indent=True)
+             ACT["cogs"], [s["cogs"] for s in SCENS], indent=True)
 
-    # Gross P&L row — colour by sign
     data_row("Gross Profit / (Loss)",
-             ACT["gross"],
-             [s["gross"] for s in SCENS],
+             ACT["gross"], [s["gross"] for s in SCENS],
              bold=True, use_color=True)
 
     data_row("Gross Margin (%)",
-             ACT["gross_mgn"],
-             [s["gross_mgn"] for s in SCENS],
-             pct=True, use_color=True)
+             ACT["gross_mgn"], [s["gross_mgn"] for s in SCENS],
+             row_type="pct", indent=True, use_color=True)
 
     blank_row()
 
     data_row("Selling, General & Administrative",
-             ACT["sga"],
-             [s["sga"] for s in SCENS],
-             indent=True)
+             ACT["sga"], [s["sga"] for s in SCENS], indent=True)
 
     data_row("EBIT",
-             ACT["ebit"],
-             [s["ebit"] for s in SCENS],
+             ACT["ebit"], [s["ebit"] for s in SCENS],
              bold=True, use_color=True)
 
     data_row("EBIT Margin (%)",
-             ACT["ebit_mgn"],
-             [s["ebit_mgn"] for s in SCENS],
-             pct=True, use_color=True)
+             ACT["ebit_mgn"], [s["ebit_mgn"] for s in SCENS],
+             row_type="pct", indent=True, use_color=True)
 
     blank_row()
 
     data_row("Add: Depreciation, Depletion & Amortisation",
-             ACT["da"],
-             [s["da"] for s in SCENS],
-             indent=True)
+             ACT["da"], [s["da"] for s in SCENS], indent=True)
 
     data_row("EBITDA",
-             ACT["ebitda"],
-             [s["ebitda"] for s in SCENS],
-             bold=True, sz=11, use_color=True)
+             ACT["ebitda"], [s["ebitda"] for s in SCENS],
+             bold=True, sz=11, use_color=True, row_ht=18)
 
     data_row("EBITDA Margin (%)",
-             ACT["ebitda_mgn"],
-             [s["ebitda_mgn"] for s in SCENS],
-             pct=True, use_color=True)
+             ACT["ebitda_mgn"], [s["ebitda_mgn"] for s in SCENS],
+             row_type="pct", indent=True, use_color=True)
 
     blank_row()
 
     data_row("Net Interest Expense  ⁽³⁾",
-             None,
-             [s["net_int"] for s in SCENS],
-             indent=True)
+             None, [s["net_int"] for s in SCENS], indent=True)
 
     data_row("Earnings Before Tax (EBT)",
-             None,
-             [s["ebt"] for s in SCENS],
-             use_color=True)
+             None, [s["ebt"] for s in SCENS], use_color=True)
 
-    data_row("Income Tax  ⁽⁴⁾",
-             ACT["tax"],
-             [s["tax"] for s in SCENS],
-             indent=True)
+    data_row("Income Tax (34% on positive EBT)  ⁽⁴⁾",
+             ACT["tax"], [s["tax"] for s in SCENS], indent=True)
 
     data_row("NET INCOME / (LOSS)",
-             ACT["net"],
-             [s["net"] for s in SCENS],
-             bold=True, sz=11, use_color=True)
+             ACT["net"], [s["net"] for s in SCENS],
+             bold=True, sz=11, use_color=True, row_ht=18)
 
     data_row("Net Margin (%)",
-             ACT["net_mgn"],
-             [s["net_mgn"] for s in SCENS],
-             pct=True, use_color=True)
+             ACT["net_mgn"], [s["net_mgn"] for s in SCENS],
+             row_type="pct", indent=True, use_color=True)
 
     blank_row()
 
-    # ── Section 3: Per Share ──────────────────────────────────────────────────
+    # ── Section: Per Share ────────────────────────────────────────────────────
     sec("PER SHARE DATA")
 
     data_row("Shares on Issue (millions)",
-             SHARES_M,
-             [SHARES_M] * 3,
-             num_fmt=FMT_MLBS)
+             SHARES_M, [SHARES_M] * 3)
+    for c in SCEN_COLS + [COL_LIVE]:
+        ws.cell(row=R-1, column=c).number_format = FMT_SHS_M
 
     data_row("EPS (US$/share)",
-             ACT["eps"],
-             [s["eps"] for s in SCENS],
-             bold=True, sz=11, num_fmt=FMT_EPS, use_color=True)
+             ACT["eps"], [s["eps"] for s in SCENS],
+             bold=True, sz=11, use_color=True, row_ht=18)
+    for c in SCEN_COLS + [COL_LIVE]:
+        ws.cell(row=R-1, column=c).number_format = FMT_EPS
 
     blank_row()
 
-    # ── Section 4: Balance Sheet Reference ───────────────────────────────────
-    sec("BALANCE SHEET REFERENCE  (31 Mar 2026 — FactSet)")
+    # ── Section: Enterprise Value & Multiples ─────────────────────────────────
+    sec("ENTERPRISE VALUE & VALUATION MULTIPLES  (live EV from header above)")
 
-    data_row("Total Debt (US$M)",
-             TOTAL_DEBT,
-             [TOTAL_DEBT] * 3)
-
-    data_row("Cash & Equivalents (US$M)",
-             CASH_BS,
-             [CASH_BS] * 3)
+    # Show the live EV in each scenario column — same value (EV is mkt-price-driven, not V2O5 price-driven)
+    # Use a formula reference back to B_EV
+    data_row("Enterprise Value — live (US$M)  ⁽⁵⁾",
+             None, [None, None, None], bold=True)
+    # override with formula in actual + scenario cols
+    ws.cell(row=R-1, column=COL_LIVE).value  = f"={B_EV}"
+    for c in SCEN_COLS:
+        ws.cell(row=R-1, column=c).value = f"={B_EV}"
+        sc(ws.cell(row=R-1, column=c), bold=True, sz=10,
+           fc=C_NAVY, bg=C_TEALLI, h="right", num_fmt=FMT_ACCT)
+    sc(ws.cell(row=R-1, column=COL_LIVE), bold=True, sz=10,
+       fc=C_NAVY, bg=C_TEALLI, h="right", num_fmt=FMT_ACCT)
 
     data_row("Net Debt (US$M)",
-             NET_DEBT,
-             [NET_DEBT] * 3,
-             bold=True)
+             NET_DEBT, [NET_DEBT] * 3, indent=True)
+
+    data_row("Implied Market Capitalisation (US$M)",
+             None, [None, None, None], indent=True)
+    for c in [COL_LIVE] + SCEN_COLS:
+        ws.cell(row=R-1, column=c).value = f"={B_MKTCAP}"
+        sc(ws.cell(row=R-1, column=c), sz=10,
+           fc=C_NAVY if c == COL_LIVE else C_DGREY,
+           bg=C_TEALLI if c == COL_LIVE else C_LGREY,
+           h="right", num_fmt=FMT_ACCT)
 
     blank_row()
 
-    # ── Section 5: Breakeven Analysis ────────────────────────────────────────
-    sec("BREAKEVEN ANALYSIS  (at 2,400t V₂O₅ sold)")
+    # Annualised EBITDA per scenario (Q2 × 4 — indicative only)
+    data_row("Annualised EBITDA  (Q2 × 4,  indicative)  (US$M)",
+             ACT["ann_ebitda"], [s["ann_ebitda"] for s in SCENS],
+             use_color=True)
 
-    ws.row_dimensions[R].height = 18
-    lc = ws.cell(row=R, column=COL_LABEL,
-                 value="EBITDA Breakeven  (Revenue = Cash COGS + SG&A)")
-    sc(lc, bold=True, sz=10, bg=C_BGASMP)
-    ws.merge_cells(start_row=R, start_column=COL_ACT, end_row=R, end_column=COL_SEP)
-    ac = ws.cell(row=R, column=COL_ACT, value=BE_EBITDA)
-    sc(ac, bold=True, sz=11, fc=C_YELLOWDK, bg=C_YELLOW, h="right",
-       num_fmt=FMT_PER_LB)
-    for col in [COL_S1, COL_S2, COL_S3]:
-        sc(ws.cell(row=R, column=col), bg=C_YELLOW, no_border=True)
-    R += 1
+    # EV/EBITDA multiples — live EV / annualised EBITDA
+    # Use formula references; show n/m for negative EBITDA
+    data_row("EV / Annualised EBITDA  ⁽⁶⁾",
+             None, [None, None, None], bold=True, row_type="mult")
 
-    ws.row_dimensions[R].height = 18
-    lc = ws.cell(row=R, column=COL_LABEL,
-                 value="EBIT Breakeven  (Revenue = Total COGS + SG&A)")
-    sc(lc, bold=True, sz=10, bg=C_BGASMP)
-    ws.merge_cells(start_row=R, start_column=COL_ACT, end_row=R, end_column=COL_SEP)
-    ac = ws.cell(row=R, column=COL_ACT, value=BE_EBIT)
-    sc(ac, bold=True, sz=11, fc=C_YELLOWDK, bg=C_YELLOW, h="right",
-       num_fmt=FMT_PER_LB)
-    for col in [COL_S1, COL_S2, COL_S3]:
-        sc(ws.cell(row=R, column=col), bg=C_YELLOW, no_border=True)
-    R += 1
+    evebitda_row = R - 1
+    for ci, (c, s) in enumerate(zip(SCEN_COLS, SCENS)):
+        ae = s["ann_ebitda"]
+        if ae > 0:
+            ws.cell(row=evebitda_row, column=c).value = f"={B_EV}/{ae:.4f}"
+        else:
+            ws.cell(row=evebitda_row, column=c).value = "n/m"
+            sc(ws.cell(row=evebitda_row, column=c),
+               bold=True, sz=10, fc=SCEN_TXT[ci], bg=SCEN_BGS[ci],
+               h="right", no_border=False)
+    sc(ws.cell(row=evebitda_row, column=COL_LIVE),
+       bold=True, sz=10, bg=C_LTBLUE, h="right",
+       num_fmt=FMT_MULT)
+    ws.cell(row=evebitda_row, column=COL_LIVE).value = "n/m"
 
-    ws.row_dimensions[R].height = 18
-    lc = ws.cell(row=R, column=COL_LABEL,
-                 value="Net Income Breakeven  (EBT = 0;  Revenue = COGS + SG&A + Interest)")
-    sc(lc, bold=True, sz=10, bg=C_BGASMP)
-    ws.merge_cells(start_row=R, start_column=COL_ACT, end_row=R, end_column=COL_SEP)
-    ac = ws.cell(row=R, column=COL_ACT, value=BE_NI)
-    sc(ac, bold=True, sz=11, fc=C_YELLOWDK, bg=C_YELLOW, h="right",
-       num_fmt=FMT_PER_LB)
-    for col in [COL_S1, COL_S2, COL_S3]:
-        sc(ws.cell(row=R, column=col), bg=C_YELLOW, no_border=True)
-    R += 1
+    blank_row()
+
+    # EV per tonne of V2O5 — live (annualised)
+    data_row("EV / Annualised V₂O₅ Production  (US$/t)  ⁽⁷⁾",
+             None, [None, None, None])
+    ev_t_row = R - 1
+    for c in [COL_LIVE] + SCEN_COLS:
+        ws.cell(row=ev_t_row, column=c).value = f"={B_EV}*1000000/{ANN_PROD_T}"
+        sc(ws.cell(row=ev_t_row, column=c),
+           fc=C_NAVY if c == COL_LIVE else C_DGREY,
+           bg=C_TEALLI if c == COL_LIVE else C_LGREY,
+           h="right", num_fmt=FMT_USD_T)
+
+    data_row("EV / Annualised V₂O₅ Production  (US$/lb)  ⁽⁷⁾",
+             None, [None, None, None])
+    ev_lb_row = R - 1
+    for c in [COL_LIVE] + SCEN_COLS:
+        ws.cell(row=ev_lb_row, column=c).value = \
+            f"={B_EV}*1000000/{ANN_PROD_T}/{LB_PER_T}"
+        sc(ws.cell(row=ev_lb_row, column=c),
+           fc=C_NAVY if c == COL_LIVE else C_DGREY,
+           bg=C_TEALLI if c == COL_LIVE else C_LGREY,
+           h="right", num_fmt=FMT_PER_LB)
+
+    blank_row()
+
+    # ── Section: Breakeven ────────────────────────────────────────────────────
+    sec("BREAKEVEN ANALYSIS  (at {:,}t V₂O₅ sold)".format(VOLUME_T))
+
+    for be_val, label in [
+        (BE_EBITDA, "EBITDA Breakeven  (Revenue = Cash COGS + SG&A)"),
+        (BE_EBIT,   "EBIT Breakeven     (Revenue = Total COGS + SG&A)"),
+        (BE_NI,     "Net Income Breakeven  (EBT = 0;  COGS + SG&A + Interest)"),
+    ]:
+        ws.row_dimensions[R].height = 18
+        lc = ws.cell(row=R, column=COL_LABEL, value=label)
+        sc(lc, bold=True, sz=10, bg=C_BGASMP)
+        ws.merge_cells(start_row=R, start_column=COL_LIVE,
+                       end_row=R, end_column=COL_SEP)
+        vc = ws.cell(row=R, column=COL_LIVE, value=be_val)
+        sc(vc, bold=True, sz=11, fc=C_YELLOWDK, bg=C_YELLOW,
+           h="right", num_fmt=FMT_PER_LB)
+        for c in SCEN_COLS:
+            sc(ws.cell(row=R, column=c), bg=C_YELLOW, no_border=True)
+        R += 1
 
     blank_row()
 
     # ── Footnotes ─────────────────────────────────────────────────────────────
-    fn_data = [
-        ("⁽¹⁾  Sales Volume",
-         "2,400t V₂O₅ assumed for Q2 2026 (annualised ~9,600 tpa). "
-         "Based on Largo's recent quarterly run-rate (~2,200–2,500t/qtr) and "
-         "FY2025 actual production of ~9,300t. Volume held constant across scenarios — "
-         "only the realised price changes."),
-        ("⁽²⁾  COGS",
-         f"Includes D&A of US${DA:.1f}M/qtr. Cash COGS (ex-D&A) = US${CASH_COGS:.1f}M, "
-         "calibrated to Q1 2026 actuals (FactSet). COGS reflects Largo's "
-         "Maracás Menchen mine (Brazil) operating costs, royalties, and on-site processing. "
-         "Costs denominated in BRL — a stronger/weaker BRL vs. USD will affect reported USD costs."),
-        ("⁽³⁾  Net Interest",
-         f"Estimated US${NET_INT:.1f}M/qtr based on total debt of US${TOTAL_DEBT:.0f}M "
-         "(FactSet, 31 Mar 2026) at an implied ~9.3% annual rate. "
-         "Largo's actual debt is primarily BRL-denominated; FX movements on debt "
-         "balances (translation gains/losses) can materially affect reported EBT and "
-         "Net Income but are excluded from this model."),
-        ("⁽⁴⁾  Tax",
-         f"Brazilian CSLL/IRPJ statutory rate of {TAX_RATE:.0%} applied to "
-         "positive EBT only. Deferred tax assets on accumulated losses are not "
-         "assumed to be recognised. Q1 2026 actual tax of US$0.15M per FactSet."),
-        ("Q1 2026 Actual",
-         "Reported by Largo Resources on 13 May 2026 (Q1 2026 results). "
-         "Net Income diverges from the modelled EBT path due to FX translation "
-         "gains/losses on BRL-denominated debt (not modelled here). "
-         "Revenue implies ~US$5.50/lb realised V₂O₅ price on ~2,300t sold."),
-        ("Data Sources",
-         "Income statement metrics (FF_SALES, FF_COGS, FF_SGA, FF_EBITDA_OPER, "
-         "FF_DEP_EXP_CF, FF_INC_TAX, FF_NET_INC) and balance sheet metrics "
-         "(FF_NET_DEBT, FF_DEBT) sourced from FactSet Fundamentals API, "
-         f"currency USD, as at {__import__('datetime').date.today()}."),
-    ]
-
-    ws.row_dimensions[R].height = 4
-    for col in range(1, NCOLS + 1):
-        sc(ws.cell(row=R, column=col), bg=C_WHITE, no_border=True)
-    R += 1
-
     mtitle(ws, R, 1, NCOLS, "  FOOTNOTES & MODEL NOTES",
            sz=9, bg=C_NAVY, h="left", ht=14)
     R += 1
 
-    for label, text in fn_data:
+    footnotes = [
+        ("⁽¹⁾  Volume",
+         f"{VOLUME_T:,}t V₂O₅ assumed for Q2 2026 (annualised ~{ANN_PROD_T:,}t pa). "
+         "Based on Largo's recent run-rate (~2,200–2,500t/qtr) and FY2025 "
+         "actual production of ~9,300t. Volume held constant across scenarios."),
+        ("⁽²⁾  COGS",
+         f"Includes D&A of US${DA:.1f}M/qtr. Cash COGS (ex-D&A) = US${CASH_COGS:.1f}M, "
+         "anchored to Q1 2026 actuals (FactSet). Costs are BRL-denominated at mine "
+         "level — a stronger/weaker BRL will shift reported USD costs."),
+        ("⁽³⁾  Interest",
+         f"Estimated US${NET_INT:.1f}M/qtr (US${TOTAL_DEBT:.0f}M total debt @ ~9.3%pa). "
+         "Largo's debt is BRL-denominated; FX translation gains/losses on debt balances "
+         "can materially affect reported Net Income and are NOT modelled here "
+         "(see Q1 2026 actual where FX gains reduced net loss to US$6.3M)."),
+        ("⁽⁴⁾  Tax",
+         f"Brazil CSLL/IRPJ statutory rate {TAX_RATE:.0%}, applied to positive EBT only. "
+         "Deferred tax assets on accumulated losses not assumed recognised."),
+        ("⁽⁵⁾  Enterprise Value",
+         f"EV = Live Market Cap (IRESS RTD price × {SHARES_M:.2f}M shares) + "
+         f"Net Debt of US${NET_DEBT:.1f}M (FactSet FF_NET_DEBT, Q1 2026, 31 Mar 2026, "
+         "reported 13 May 2026). EV moves in real-time with the share price. "
+         f"IRESS ticker used: '{IRESS_TICK}' — verify exchange suffix (.NSQ for NASDAQ, "
+         ".TSX for Toronto) if the RTD cell shows an error."),
+        ("⁽⁶⁾  EV/EBITDA",
+         "Annualised EBITDA = Q2 2026 modelled EBITDA × 4 (indicative; single-quarter "
+         "annualisation). Shown as 'n/m' for negative EBITDA scenarios. "
+         "Live EV from header divided by annualised EBITDA."),
+        ("⁽⁷⁾  EV/V₂O₅",
+         f"Live EV divided by annualised V₂O₅ production of {ANN_PROD_T:,}t pa "
+         f"(= {VOLUME_T:,}t Q2 × 4). This metric is constant across all three "
+         "price scenarios — it is driven solely by the live share price, not by "
+         "the V₂O₅ commodity price assumption."),
+    ]
+
+    for label, text in footnotes:
         ws.row_dimensions[R].height = 14
         lc = ws.cell(row=R, column=COL_LABEL, value=label)
         sc(lc, bold=True, sz=8, fc=C_AMBERDK, bg=C_AMBER, h="left", no_border=True)
-        ws.merge_cells(start_row=R, start_column=COL_ACT, end_row=R, end_column=NCOLS)
-        tc = ws.cell(row=R, column=COL_ACT, value=text)
-        sc(tc, sz=8, italic=True, fc=C_AMBERDK, bg=C_AMBER, h="left",
-           wrap=True, no_border=True)
+        ws.merge_cells(start_row=R, start_column=COL_LIVE,
+                       end_row=R, end_column=NCOLS)
+        tc = ws.cell(row=R, column=COL_LIVE, value=text)
+        sc(tc, sz=8, italic=True, fc=C_AMBERDK, bg=C_AMBER,
+           h="left", wrap=True, no_border=True)
         R += 1
 
-    # ── Freeze & print ────────────────────────────────────────────────────────
-    ws.freeze_panes = "B5"
+    # freeze at first data row, name column
+    ws.freeze_panes = f"B{DATA_START}"
     ws.page_setup.orientation = "landscape"
     ws.page_setup.fitToPage   = True
     ws.page_setup.fitToWidth  = 1
@@ -588,132 +701,121 @@ def build_model(ws):
 
 
 # ─────────────────────────────────────────────────────────────────────────────
-# BUILD HISTORICAL SHEET
+# BUILD HISTORICAL SHEET  (unchanged from v1)
 # ─────────────────────────────────────────────────────────────────────────────
 def build_history(ws):
     N = len(HIST)
-
-    # Column widths: A=label, B-J=quarters
     ws.column_dimensions["A"].width = 32
     for i in range(N):
         ws.column_dimensions[get_column_letter(2 + i)].width = 11
 
     R = 1
-
     ws.row_dimensions[R].height = 22
     mtitle(ws, R, 1, 1 + N,
-           "LARGO RESOURCES (LGO) — QUARTERLY ACTUALS  |  Q1 2024 – Q1 2026",
+           "LARGO RESOURCES (LGO)  —  QUARTERLY ACTUALS  |  Q1 2024 – Q1 2026",
            sz=12, ht=22)
     R += 1
-
     ws.row_dimensions[R].height = 13
     mtitle(ws, R, 1, 1 + N,
-           "Source: FactSet Fundamentals API (FF_SALES / FF_COGS / FF_SGA / "
-           "FF_EBITDA_OPER / FF_DEP_EXP_CF / FF_INC_TAX / FF_NET_INC)  |  "
-           "Currency: USD  |  All figures US$M",
+           "Source: FactSet Fundamentals API  "
+           "(FF_SALES / FF_COGS / FF_SGA / FF_EBITDA_OPER / FF_DEP_EXP_CF / "
+           "FF_INC_TAX / FF_NET_INC)  |  Currency: USD  |  All figures US$M",
            bold=False, sz=8, bg=C_BLUE, ht=13)
     R += 1
-
-    ws.row_dimensions[R].height = 4  # spacer
+    ws.row_dimensions[R].height = 4
     R += 1
 
-    # Quarter header row
+    # Quarter headers
     ws.row_dimensions[R].height = 28
-    w(ws, R, 1, val="Line Item (US$M)", bold=True, sz=9,
-      fc=C_WHITE, bg=C_NAVY, h="left", v="center", thick_bot=True)
-    for i, (qtr, *_) in enumerate(HIST):
-        flag = HIST[i][7]
-        w(ws, R, 2 + i, val=qtr + (" " + flag if flag else ""),
-          bold=True, sz=9, fc=C_WHITE, bg=C_NAVY,
-          h="center", v="center", wrap=True, thick_bot=True)
+    wcell(ws, R, 1, val="Line Item (US$M)", bold=True, sz=9,
+          fc=C_WHITE, bg=C_NAVY, h="left", v="center", thick_bot=True)
+    for i, h in enumerate(HIST):
+        flag = h[7]
+        wcell(ws, R, 2 + i,
+              val=h[0] + (" " + flag if flag else ""),
+              bold=True, sz=9, fc=C_WHITE, bg=C_NAVY,
+              h="center", v="center", wrap=True, thick_bot=True)
     R += 1
 
-    def hist_section(label):
+    def h_sec(label):
         nonlocal R
-        ws.merge_cells(start_row=R, start_column=1, end_row=R, end_column=1 + N)
-        c = ws.cell(row=R, column=1, value=f"  {label}")
-        sc(c, bold=True, sz=9, fc=C_WHITE, bg=C_NAVY2, no_border=True)
-        ws.row_dimensions[R].height = 14
+        sec_hdr(ws, R, 1, 1 + N, f"  {label}")
         R += 1
 
-    def hist_row(label, vals, num_fmt=FMT_ACCT, bold=False,
-                 indent=False, use_color=False, pct=False, sz=9):
+    def h_row(label, vals, bold=False, indent=False,
+              use_color=False, row_type="value", sz=9):
         nonlocal R
         ws.row_dimensions[R].height = 16
-        prefix = "    " if indent else ""
-        lc = ws.cell(row=R, column=1, value=prefix + label)
-        sc(lc, bold=bold, sz=9, bg=C_BGASMP if not indent else C_WHITE)
+        lc = ws.cell(row=R, column=1,
+                     value=("    " + label if indent else label))
+        sc(lc, bold=bold, sz=sz, bg=C_BGASMP if not indent else C_WHITE)
+        nf = (FMT_PCT  if row_type == "pct"  else
+              FMT_EPS  if row_type == "eps"  else FMT_ACCT)
         for i, v in enumerate(vals):
-            col = 2 + i
             bg = C_LTBLUE if i % 2 == 0 else C_WHITE
-            txt = C_BLACK
+            fc = C_BLACK
             if use_color and v is not None:
-                bg, txt = val_color(v)
-            cell = ws.cell(row=R, column=col, value=v)
-            sc(cell, bold=bold, sz=9, fc=txt, bg=bg, h="right",
-               num_fmt=(FMT_PCT if pct else num_fmt))
+                bg, fc = val_color(v)
+            cell = ws.cell(row=R, column=2 + i, value=v)
+            sc(cell, bold=bold, sz=sz, fc=fc, bg=bg, h="right", num_fmt=nf)
         R += 1
 
-    def hblank():
+    def h_blank():
         nonlocal R
         ws.row_dimensions[R].height = 5
-        for col in range(1, 2 + N):
-            sc(ws.cell(row=R, column=col), bg=C_WHITE, no_border=True)
+        for c in range(1, 2 + N):
+            sc(ws.cell(row=R, column=c), bg=C_WHITE, no_border=True)
         R += 1
 
-    # ── Revenue ───────────────────────────────────────────────────────────────
-    hist_section("INCOME STATEMENT (US$M)")
-    hist_row("Revenue", [h[1] for h in HIST], bold=True)
-    hist_row("Cost of Goods Sold (incl. D&A)", [h[2] for h in HIST], indent=True)
+    h_sec("INCOME STATEMENT  (US$M)")
+    h_row("Revenue",                          [h[1] for h in HIST], bold=True)
+    h_row("Cost of Goods Sold (incl. D&A)",   [h[2] for h in HIST], indent=True)
 
-    gross_vals = [h[1] - h[2] for h in HIST]
-    hist_row("Gross Profit / (Loss)", gross_vals, bold=True, use_color=True)
+    gross = [h[1] - h[2] for h in HIST]
+    h_row("Gross Profit / (Loss)", gross, bold=True, use_color=True)
+    h_row("  Gross Margin (%)", [g/h[1] for g,h in zip(gross,HIST)],
+          indent=True, use_color=True, row_type="pct")
 
-    gross_mgn = [(h[1] - h[2]) / h[1] for h in HIST]
-    hist_row("  Gross Margin (%)", gross_mgn, pct=True, indent=True, use_color=True)
+    h_blank()
+    h_row("SG&A",                             [h[3] for h in HIST], indent=True)
 
-    hblank()
+    ebit = [h[4] - h[5] for h in HIST]
+    h_row("EBIT", ebit, bold=True, use_color=True)
+    h_row("  EBIT Margin (%)", [e/h[1] for e,h in zip(ebit,HIST)],
+          indent=True, use_color=True, row_type="pct")
 
-    hist_row("Selling, General & Administrative", [h[3] for h in HIST], indent=True)
+    h_blank()
+    h_row("Add: D&A",                         [h[5] for h in HIST], indent=True)
+    h_row("EBITDA",                           [h[4] for h in HIST],
+          bold=True, sz=10, use_color=True)
+    h_row("  EBITDA Margin (%)", [h[4]/h[1] for h in HIST],
+          indent=True, use_color=True, row_type="pct")
 
-    ebit_vals = [h[4] - h[5] for h in HIST]
-    hist_row("EBIT", ebit_vals, bold=True, use_color=True)
+    h_blank()
+    h_row("Net Income / (Loss)", [h[6] for h in HIST],
+          bold=True, sz=10, use_color=True)
+    h_row("  Net Margin (%)", [h[6]/h[1] for h in HIST],
+          indent=True, use_color=True, row_type="pct")
 
-    ebit_mgn = [(h[4] - h[5]) / h[1] for h in HIST]
-    hist_row("  EBIT Margin (%)", ebit_mgn, pct=True, indent=True, use_color=True)
+    h_blank()
+    h_sec("PER SHARE DATA")
+    h_row("EPS (US$/share)", [h[6]/SHARES_M for h in HIST],
+          bold=True, use_color=True, row_type="eps")
 
-    hblank()
+    h_blank()
+    h_sec("BALANCE SHEET REFERENCE  (FactSet FF_NET_DEBT / FF_DEBT — most recent quarter)")
+    h_row("Net Debt (US$M)  — Q1 2026", [None]*8 + [NET_DEBT])
+    h_row("Total Debt (US$M) — Q1 2026", [None]*8 + [TOTAL_DEBT])
+    h_row("Cash (US$M) — Q1 2026", [None]*8 + [round(CASH_BS,1)])
 
-    hist_row("Add: D&A", [h[5] for h in HIST], indent=True)
-    hist_row("EBITDA", [h[4] for h in HIST], bold=True, sz=10, use_color=True)
-
-    ebitda_mgn = [h[4] / h[1] for h in HIST]
-    hist_row("  EBITDA Margin (%)", ebitda_mgn, pct=True, indent=True, use_color=True)
-
-    hblank()
-
-    hist_row("Income Tax (expense) / benefit", [h[7] for h in HIST], indent=True)
-    hist_row("Net Income / (Loss)", [h[6] for h in HIST],
-             bold=True, sz=10, use_color=True)
-
-    net_mgn = [h[6] / h[1] for h in HIST]
-    hist_row("  Net Margin (%)", net_mgn, pct=True, indent=True, use_color=True)
-
-    hblank()
-
-    hist_section("PER SHARE DATA")
-    eps_vals = [h[6] / SHARES_M for h in HIST]
-    hist_row("EPS (US$/share)", eps_vals, bold=True, num_fmt=FMT_EPS, use_color=True)
-
-    hblank()
-
-    # ── Footnote ──────────────────────────────────────────────────────────────
+    h_blank()
+    # footnote
     ws.merge_cells(start_row=R, start_column=1, end_row=R, end_column=1 + N)
     fn = ws.cell(row=R, column=1,
-                 value="† Q3 2025: Net Loss of US$36.6M reflects a large non-cash impairment "
-                       "(VCHARGE electrolyte business). Tax line shows a US$26.2M deferred "
-                       "tax benefit, partially offsetting the write-down. "
-                       "EBITDA of -US$0.7M was broadly in line with surrounding quarters.")
+                 value="† Q3 2025: Net Loss of US$36.6M includes a large non-cash "
+                       "impairment of the VCHARGE electrolyte business. Tax line reflects "
+                       "a US$26.2M deferred tax benefit partly offsetting the write-down. "
+                       "EBITDA of –US$0.7M was broadly in line with adjacent quarters.")
     sc(fn, sz=8, italic=True, fc=C_AMBERDK, bg=C_AMBER,
        h="left", wrap=True, no_border=True)
     ws.row_dimensions[R].height = 28
@@ -744,13 +846,13 @@ def main():
     out = "largo_v2o5_model.xlsx"
     wb.save(out)
     print(f"Saved: {out}")
-    print(f"  Breakeven EBITDA : US${BE_EBITDA:.2f}/lb V2O5")
-    print(f"  Breakeven EBIT   : US${BE_EBIT:.2f}/lb V2O5")
-    print(f"  Breakeven NI     : US${BE_NI:.2f}/lb V2O5")
+    print(f"  Breakeven EBITDA : US${BE_EBITDA:.2f}/lb")
+    print(f"  Breakeven EBIT   : US${BE_EBIT:.2f}/lb")
+    print(f"  Breakeven NI     : US${BE_NI:.2f}/lb")
     for s in SCENS:
-        print(f"  ${s['price_lb']:.2f}/lb → Revenue ${s['rev']:.1f}M  "
+        print(f"  ${s['price_lb']:.2f}/lb  Rev ${s['rev']:.1f}M  "
               f"EBITDA ${s['ebitda']:+.1f}M  Net ${s['net']:+.1f}M  "
-              f"EPS ${s['eps']:+.2f}")
+              f"EPS ${s['eps']:+.2f}  AnnEBITDA ${s['ann_ebitda']:+.1f}M")
 
 
 if __name__ == "__main__":
