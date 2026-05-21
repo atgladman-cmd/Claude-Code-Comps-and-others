@@ -1,0 +1,516 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="apple-mobile-web-app-capable" content="yes">
+  <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+  <meta name="apple-mobile-web-app-title" content="Metals">
+  <meta name="theme-color" content="#0f0f1a">
+  <title>Metals Prices</title>
+  <link rel="manifest" href="manifest.json">
+  <link rel="apple-touch-icon" href="icon-192.png">
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --gold:   #f5c842;
+      --copper: #b87333;
+      --bg:     #0f0f1a;
+      --card:   #1a1a2e;
+      --border: #2a2a4a;
+      --text:   #e8e8f0;
+      --muted:  #8888aa;
+      --up:     #00c896;
+      --down:   #ff4f6e;
+    }
+
+    html, body {
+      height: 100%;
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "SF Pro Display", "Segoe UI", sans-serif;
+      -webkit-font-smoothing: antialiased;
+      overscroll-behavior: none;
+    }
+
+    body {
+      display: flex;
+      flex-direction: column;
+      min-height: 100dvh;
+      padding: env(safe-area-inset-top, 12px) 16px env(safe-area-inset-bottom, 16px);
+    }
+
+    header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 16px 0 20px;
+    }
+
+    .header-title {
+      font-size: 13px;
+      font-weight: 600;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--muted);
+    }
+
+    .header-logo {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      text-decoration: none;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .header-logo span {
+      color: var(--gold);
+      font-weight: 700;
+    }
+
+    .timestamp {
+      font-size: 11px;
+      color: var(--muted);
+      text-align: center;
+      margin-bottom: 20px;
+      letter-spacing: 0.03em;
+    }
+
+    .cards {
+      display: flex;
+      flex-direction: column;
+      gap: 16px;
+      flex: 1;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 20px;
+      padding: 24px;
+      position: relative;
+      overflow: hidden;
+      transition: transform 0.15s ease;
+      -webkit-tap-highlight-color: transparent;
+    }
+
+    .card::before {
+      content: '';
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      border-radius: 20px 20px 0 0;
+    }
+
+    .card.gold::before  { background: linear-gradient(90deg, #f5c842, #ffaa00); }
+    .card.copper::before { background: linear-gradient(90deg, #b87333, #e09050); }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      margin-bottom: 20px;
+    }
+
+    .metal-info {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
+
+    .metal-icon {
+      width: 36px;
+      height: 36px;
+      border-radius: 10px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 18px;
+    }
+
+    .card.gold  .metal-icon { background: rgba(245,200,66,0.15); }
+    .card.copper .metal-icon { background: rgba(184,115,51,0.15); }
+
+    .metal-name {
+      font-size: 18px;
+      font-weight: 700;
+      letter-spacing: -0.02em;
+    }
+
+    .metal-unit {
+      font-size: 12px;
+      color: var(--muted);
+      margin-top: 1px;
+    }
+
+    .badge {
+      font-size: 11px;
+      font-weight: 600;
+      padding: 4px 10px;
+      border-radius: 20px;
+      letter-spacing: 0.03em;
+    }
+
+    .badge.up   { background: rgba(0,200,150,0.15); color: var(--up); }
+    .badge.down { background: rgba(255,79,110,0.15); color: var(--down); }
+    .badge.flat { background: rgba(136,136,170,0.15); color: var(--muted); }
+
+    .price-row {
+      display: flex;
+      align-items: flex-end;
+      justify-content: space-between;
+      margin-bottom: 16px;
+    }
+
+    .price {
+      font-size: 42px;
+      font-weight: 700;
+      letter-spacing: -0.03em;
+      line-height: 1;
+    }
+
+    .card.gold   .price { color: var(--gold); }
+    .card.copper .price { color: var(--copper); }
+
+    .price-currency {
+      font-size: 18px;
+      font-weight: 600;
+      color: var(--muted);
+      margin-bottom: 6px;
+      margin-right: 4px;
+    }
+
+    .price-unit {
+      font-size: 13px;
+      color: var(--muted);
+      margin-bottom: 8px;
+    }
+
+    .change-row {
+      display: flex;
+      gap: 16px;
+      padding-top: 16px;
+      border-top: 1px solid var(--border);
+    }
+
+    .change-item {
+      flex: 1;
+    }
+
+    .change-label {
+      font-size: 11px;
+      color: var(--muted);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      margin-bottom: 4px;
+    }
+
+    .change-value {
+      font-size: 15px;
+      font-weight: 600;
+    }
+
+    .change-value.up   { color: var(--up); }
+    .change-value.down { color: var(--down); }
+    .change-value.flat { color: var(--muted); }
+
+    .skeleton {
+      background: linear-gradient(90deg, var(--border) 25%, var(--card) 50%, var(--border) 75%);
+      background-size: 200% 100%;
+      animation: shimmer 1.5s infinite;
+      border-radius: 6px;
+      height: 42px;
+      width: 160px;
+    }
+
+    .skeleton.sm {
+      height: 15px;
+      width: 80px;
+    }
+
+    @keyframes shimmer {
+      0%   { background-position: 200% 0; }
+      100% { background-position: -200% 0; }
+    }
+
+    .refresh-btn {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: 6px;
+      margin: 20px auto 0;
+      background: none;
+      border: 1px solid var(--border);
+      border-radius: 100px;
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 500;
+      padding: 10px 20px;
+      cursor: pointer;
+      -webkit-tap-highlight-color: transparent;
+      transition: border-color 0.15s, color 0.15s;
+    }
+
+    .refresh-btn:active { border-color: var(--gold); color: var(--gold); }
+
+    .refresh-icon {
+      width: 14px;
+      height: 14px;
+      transition: transform 0.4s ease;
+    }
+
+    .refresh-icon.spinning { animation: spin 0.6s linear 1; }
+
+    @keyframes spin {
+      to { transform: rotate(360deg); }
+    }
+
+    footer {
+      text-align: center;
+      font-size: 11px;
+      color: var(--muted);
+      padding: 16px 0 4px;
+    }
+
+    footer a {
+      color: var(--gold);
+      text-decoration: none;
+    }
+
+    .error-msg {
+      text-align: center;
+      font-size: 12px;
+      color: var(--down);
+      margin-top: 8px;
+      display: none;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="header-title">Live Spot Prices</div>
+    <a class="header-logo" href="https://www.kitco.com" target="_blank" rel="noopener">
+      <span>KITCO</span>
+    </a>
+  </header>
+
+  <div class="timestamp" id="timestamp">Fetching prices…</div>
+
+  <div class="cards">
+
+    <!-- Gold Card -->
+    <div class="card gold" id="goldCard">
+      <div class="card-header">
+        <div class="metal-info">
+          <div class="metal-icon">🥇</div>
+          <div>
+            <div class="metal-name">Gold</div>
+            <div class="metal-unit">XAU / USD</div>
+          </div>
+        </div>
+        <div class="badge flat" id="goldBadge">—</div>
+      </div>
+      <div class="price-row">
+        <div style="display:flex;align-items:flex-end">
+          <span class="price-currency">$</span>
+          <div class="price" id="goldPrice"><div class="skeleton"></div></div>
+        </div>
+        <div class="price-unit">per troy oz</div>
+      </div>
+      <div class="change-row">
+        <div class="change-item">
+          <div class="change-label">Change $</div>
+          <div class="change-value flat" id="goldChangeAbs"><div class="skeleton sm"></div></div>
+        </div>
+        <div class="change-item">
+          <div class="change-label">Change %</div>
+          <div class="change-value flat" id="goldChangePct"><div class="skeleton sm"></div></div>
+        </div>
+        <div class="change-item">
+          <div class="change-label">Open</div>
+          <div class="change-value flat" id="goldOpen"><div class="skeleton sm"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Copper Card -->
+    <div class="card copper" id="copperCard">
+      <div class="card-header">
+        <div class="metal-info">
+          <div class="metal-icon">🔶</div>
+          <div>
+            <div class="metal-name">Copper</div>
+            <div class="metal-unit">HG / USD</div>
+          </div>
+        </div>
+        <div class="badge flat" id="copperBadge">—</div>
+      </div>
+      <div class="price-row">
+        <div style="display:flex;align-items:flex-end">
+          <span class="price-currency">$</span>
+          <div class="price" id="copperPrice"><div class="skeleton"></div></div>
+        </div>
+        <div class="price-unit">per lb</div>
+      </div>
+      <div class="change-row">
+        <div class="change-item">
+          <div class="change-label">Change $</div>
+          <div class="change-value flat" id="copperChangeAbs"><div class="skeleton sm"></div></div>
+        </div>
+        <div class="change-item">
+          <div class="change-label">Change %</div>
+          <div class="change-value flat" id="copperChangePct"><div class="skeleton sm"></div></div>
+        </div>
+        <div class="change-item">
+          <div class="change-label">Open</div>
+          <div class="change-value flat" id="copperOpen"><div class="skeleton sm"></div></div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <button class="refresh-btn" id="refreshBtn" onclick="refresh()">
+    <svg class="refresh-icon" id="refreshIcon" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+      <polyline points="23 4 23 10 17 10"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/>
+    </svg>
+    Refresh
+  </button>
+
+  <div class="error-msg" id="errorMsg">Unable to fetch prices. Retrying…</div>
+
+  <footer>
+    Data sourced from <a href="https://www.kitco.com" target="_blank" rel="noopener">Kitco.com</a>
+  </footer>
+
+  <script>
+    // Yahoo Finance CORS proxy via allorigins
+    const PROXY = 'https://api.allorigins.win/get?url=';
+
+    function yf(ticker) {
+      const url = encodeURIComponent(
+        `https://query1.finance.yahoo.com/v8/finance/chart/${ticker}?interval=1d&range=2d`
+      );
+      return fetch(PROXY + url)
+        .then(r => r.json())
+        .then(j => JSON.parse(j.contents));
+    }
+
+    function fmt(n, decimals = 2) {
+      if (n == null || isNaN(n)) return '—';
+      return Number(n).toLocaleString('en-US', {
+        minimumFractionDigits: decimals,
+        maximumFractionDigits: decimals
+      });
+    }
+
+    function applyChange(priceEl, absEl, pctEl, badgeEl, price, open) {
+      if (open == null || price == null) return;
+      const diff = price - open;
+      const pct  = (diff / open) * 100;
+      const cls  = diff > 0 ? 'up' : diff < 0 ? 'down' : 'flat';
+      const sign = diff > 0 ? '+' : '';
+
+      absEl.textContent  = sign + fmt(diff);
+      pctEl.textContent  = sign + fmt(pct) + '%';
+      absEl.className    = `change-value ${cls}`;
+      pctEl.className    = `change-value ${cls}`;
+      badgeEl.textContent = sign + fmt(pct) + '%';
+      badgeEl.className   = `badge ${cls}`;
+    }
+
+    async function fetchPrices() {
+      const [goldData, copperData] = await Promise.all([
+        yf('GC=F'),   // Gold futures (matches Kitco spot closely)
+        yf('HG=F')    // Copper futures (lb)
+      ]);
+
+      // Gold
+      const gMeta   = goldData.chart.result[0].meta;
+      const gPrice  = gMeta.regularMarketPrice;
+      const gOpen   = gMeta.chartPreviousClose ?? gMeta.previousClose;
+
+      document.getElementById('goldPrice').textContent = fmt(gPrice);
+      document.getElementById('goldOpen').textContent  = fmt(gOpen);
+      applyChange(
+        document.getElementById('goldPrice'),
+        document.getElementById('goldChangeAbs'),
+        document.getElementById('goldChangePct'),
+        document.getElementById('goldBadge'),
+        gPrice, gOpen
+      );
+
+      // Copper (HG=F is quoted in USD/lb)
+      const cMeta   = copperData.chart.result[0].meta;
+      const cPrice  = cMeta.regularMarketPrice;
+      const cOpen   = cMeta.chartPreviousClose ?? cMeta.previousClose;
+
+      document.getElementById('copperPrice').textContent = fmt(cPrice, 4);
+      document.getElementById('copperOpen').textContent  = fmt(cOpen, 4);
+      applyChange(
+        document.getElementById('copperPrice'),
+        document.getElementById('copperChangeAbs'),
+        document.getElementById('copperChangePct'),
+        document.getElementById('copperBadge'),
+        cPrice, cOpen
+      );
+    }
+
+    function setTimestamp() {
+      const now = new Date();
+      document.getElementById('timestamp').textContent =
+        'Updated ' + now.toLocaleTimeString('en-AU', {
+          hour: '2-digit', minute: '2-digit', second: '2-digit',
+          timeZoneName: 'short'
+        });
+    }
+
+    let autoRefresh;
+
+    async function refresh() {
+      const icon = document.getElementById('refreshIcon');
+      const err  = document.getElementById('errorMsg');
+      icon.classList.add('spinning');
+      err.style.display = 'none';
+
+      try {
+        await fetchPrices();
+        setTimestamp();
+      } catch (e) {
+        console.error('Price fetch failed:', e);
+        err.style.display = 'block';
+      } finally {
+        icon.classList.remove('spinning');
+      }
+    }
+
+    // Auto-refresh every 60 seconds
+    function startAutoRefresh() {
+      clearInterval(autoRefresh);
+      autoRefresh = setInterval(refresh, 60_000);
+    }
+
+    // Pause refresh when tab is hidden, resume when visible
+    document.addEventListener('visibilitychange', () => {
+      if (document.visibilityState === 'visible') {
+        refresh();
+        startAutoRefresh();
+      } else {
+        clearInterval(autoRefresh);
+      }
+    });
+
+    // Initial load
+    refresh();
+    startAutoRefresh();
+
+    // Register service worker
+    if ('serviceWorker' in navigator) {
+      navigator.serviceWorker.register('sw.js').catch(() => {});
+    }
+  </script>
+</body>
+</html>
