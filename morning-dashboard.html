@@ -1,0 +1,926 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Morning Market Dashboard</title>
+  <style>
+    :root {
+      --bg:      #0d1117;
+      --bg2:     #161b22;
+      --bg3:     #1c2128;
+      --border:  #30363d;
+      --text:    #e6edf3;
+      --text2:   #8b949e;
+      --text3:   #484f58;
+      --blue:    #58a6ff;
+      --green:   #3fb950;
+      --red:     #f85149;
+      --gold:    #d29922;
+      --copper:  #c8762a;
+      --orange:  #e3b341;
+    }
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      background: var(--bg); color: var(--text);
+      font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
+      font-size: 13px; line-height: 1.45;
+    }
+
+    /* ── HEADER ── */
+    .topbar {
+      position: sticky; top: 0; z-index: 200;
+      background: var(--bg2); border-bottom: 1px solid var(--border);
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 10px 20px; gap: 12px;
+    }
+    .topbar-title { font-size: 15px; font-weight: 700; letter-spacing: -0.3px; }
+    .topbar-title span { color: var(--gold); }
+    .topbar-right { display: flex; align-items: center; gap: 14px; }
+    .clock { font-size: 15px; font-weight: 600; font-variant-numeric: tabular-nums; color: var(--blue); }
+    .topbar-date { font-size: 11px; color: var(--text2); }
+    .topbar-aest { font-size: 10px; color: var(--text3); }
+    .btn {
+      background: var(--bg3); border: 1px solid var(--border); color: var(--text);
+      padding: 5px 13px; border-radius: 6px; cursor: pointer; font-size: 12px;
+      transition: border-color .15s;
+    }
+    .btn:hover { border-color: var(--blue); color: var(--blue); }
+
+    /* ── LAYOUT ── */
+    .wrap { max-width: 1640px; margin: 0 auto; padding: 14px 16px; }
+    .sec { margin-bottom: 14px; }
+    .sec-hdr {
+      display: flex; align-items: center; gap: 7px;
+      margin-bottom: 9px; padding-bottom: 5px;
+      border-bottom: 1px solid var(--border);
+    }
+    .sec-dot { width: 7px; height: 7px; border-radius: 50%; flex-shrink: 0; }
+    .sec-title { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: .8px; color: var(--text2); }
+    .sec-sub { font-size: 10px; color: var(--text3); margin-left: auto; }
+    .live-dot {
+      display: inline-block; width: 6px; height: 6px; border-radius: 50%;
+      background: var(--green); animation: pulse 2s ease-in-out infinite;
+    }
+    @keyframes pulse { 0%,100%{opacity:1} 50%{opacity:.35} }
+
+    .g3 { display: grid; grid-template-columns: repeat(3,1fr); gap: 11px; }
+    .g2 { display: grid; grid-template-columns: repeat(2,1fr); gap: 11px; }
+    .g4 { display: grid; grid-template-columns: repeat(4,1fr); gap: 10px; }
+
+    /* ── CARDS ── */
+    .card {
+      background: var(--bg3); border: 1px solid var(--border);
+      border-radius: 9px; padding: 13px 14px; position: relative;
+    }
+    .card-hdr { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 7px; }
+    .card-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text2); }
+    .card-sub { font-size: 10px; color: var(--text3); margin-top: 1px; }
+    .pill {
+      font-size: 10px; font-weight: 600; padding: 2px 7px; border-radius: 4px;
+      background: rgba(88,166,255,.10); color: var(--blue); text-decoration: none;
+      white-space: nowrap;
+    }
+    .pill:hover { background: rgba(88,166,255,.2); }
+    .pill-green { background: rgba(63,185,80,.10); color: var(--green); }
+    .pill-gold  { background: rgba(210,153,34,.10); color: var(--gold);  }
+
+    .big { font-size: 24px; font-weight: 700; font-variant-numeric: tabular-nums; }
+    .med { font-size: 18px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .sm  { font-size: 13px; font-weight: 600; font-variant-numeric: tabular-nums; }
+    .lbl { font-size: 10px; color: var(--text2); margin-top: 1px; }
+    .chg { font-size: 11px; font-weight: 600; }
+    .up  { color: var(--green); }
+    .dn  { color: var(--red); }
+    .fl  { color: var(--text2); }
+
+    .sep { border: none; border-top: 1px solid var(--border); margin: 9px 0; }
+
+    /* conversion box */
+    .cvt {
+      background: rgba(88,166,255,.05); border: 1px solid rgba(88,166,255,.18);
+      border-radius: 6px; padding: 8px 10px; margin-top: 8px;
+    }
+    .cvt-lbl { font-size: 10px; color: var(--text2); margin-bottom: 3px; }
+    .cvt-val { font-size: 20px; font-weight: 700; color: var(--blue); }
+
+    /* chart container */
+    .ch-wrap { position: relative; width: 100%; overflow: hidden; border-radius: 5px; }
+    .ch-lbl { font-size: 10px; text-transform: uppercase; letter-spacing: .5px; color: var(--text3); margin-bottom: 3px; }
+
+    /* skeleton / loading */
+    @keyframes shimmer { 0%{background-position:200% 0} 100%{background-position:-200% 0} }
+    .skel {
+      background: linear-gradient(90deg, var(--border) 25%, var(--bg2) 50%, var(--border) 75%);
+      background-size: 200% 100%; animation: shimmer 1.6s infinite;
+      border-radius: 4px; display: inline-block;
+    }
+
+    /* ── METALS LAYOUT ── */
+    .metal-layout { display: grid; grid-template-columns: 160px 1fr 1fr; gap: 11px; align-items: start; }
+
+    /* ── COAL LAYOUT ── */
+    .coal-charts { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-top: 9px; }
+
+    /* ── HOT COPPER GRID ── */
+    .hc-grid { display: grid; grid-template-columns: repeat(9,1fr); gap: 7px; margin-bottom: 12px; }
+    .hc-tile {
+      background: var(--bg2); border: 1px solid var(--border); border-radius: 7px;
+      padding: 8px; text-align: center; text-decoration: none; color: var(--text);
+      transition: border-color .15s, background .15s;
+      display: block;
+    }
+    .hc-tile:hover { border-color: var(--blue); background: rgba(88,166,255,.06); }
+    .hc-code { font-size: 14px; font-weight: 700; color: var(--blue); }
+    .hc-sub  { font-size: 9px;  color: var(--text3); margin-top: 2px; }
+
+    /* ── ASX ANNOUNCEMENTS ── */
+    .ann-item { display: flex; align-items: flex-start; gap: 9px; padding: 7px 0; border-bottom: 1px solid var(--border); }
+    .ann-item:last-child { border-bottom: none; }
+    .ann-code {
+      min-width: 38px; padding: 2px 5px; border-radius: 4px;
+      background: rgba(63,185,80,.10); color: var(--green);
+      font-size: 11px; font-weight: 700; text-align: center;
+    }
+    .ann-body { flex: 1; }
+    .ann-title { font-size: 12px; }
+    .ann-title a { color: var(--text); text-decoration: none; }
+    .ann-title a:hover { color: var(--blue); text-decoration: underline; }
+    .ann-meta { font-size: 10px; color: var(--text3); margin-top: 2px; }
+    .ann-sens { font-size: 9px; padding: 1px 5px; border-radius: 3px; background: rgba(232,161,65,.15); color: var(--orange); margin-left: 6px; }
+
+    /* ── SGX INFO BOX ── */
+    .info-box {
+      background: rgba(88,166,255,.04); border: 1px solid rgba(88,166,255,.12);
+      border-radius: 6px; padding: 10px; margin-top: 8px;
+    }
+    .info-box a { font-size: 11px; display: block; margin-top: 4px; color: var(--blue); text-decoration: none; }
+    .info-box a:hover { text-decoration: underline; }
+
+    /* ── FOOTER ── */
+    .foot {
+      text-align: center; font-size: 10px; color: var(--text3);
+      border-top: 1px solid var(--border); padding: 12px 16px; margin-top: 12px;
+    }
+
+    /* responsive */
+    @media (max-width: 1200px) {
+      .g4 { grid-template-columns: repeat(2,1fr); }
+      .hc-grid { grid-template-columns: repeat(6,1fr); }
+      .metal-layout { grid-template-columns: 140px 1fr; }
+      .metal-layout > div:last-child { grid-column: 1/-1; }
+    }
+    @media (max-width: 860px) {
+      .g3,.g2 { grid-template-columns: 1fr; }
+      .hc-grid { grid-template-columns: repeat(4,1fr); }
+      .metal-layout { grid-template-columns: 1fr; }
+    }
+  </style>
+</head>
+<body>
+
+<!-- ════════════════════ TOPBAR ════════════════════ -->
+<div class="topbar">
+  <div>
+    <div class="topbar-title">⚡ <span>Morning</span> Market Dashboard</div>
+    <div class="topbar-date" id="dateDisp">—</div>
+  </div>
+  <div class="topbar-right">
+    <div>
+      <div class="clock" id="clockDisp">--:--:--</div>
+      <div class="topbar-aest"><span class="live-dot"></span> AEST &nbsp;·&nbsp; <span id="utcDisp">-- UTC</span></div>
+    </div>
+    <button class="btn" onclick="refreshAll()">↻ Refresh All</button>
+  </div>
+</div>
+
+<div class="wrap">
+
+<!-- ════════════════════ FX RATES ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--blue)"></div>
+    <span class="sec-title">FX Rates</span>
+    <span class="live-dot" style="margin-left:4px"></span>
+    <span class="sec-sub" id="fxUpdate">loading…</span>
+  </div>
+  <div class="g3">
+
+    <!-- AUDGBP -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">AUD / GBP</div>
+          <div class="card-sub">Iress: AUDGBP.FX</div>
+        </div>
+        <div style="display:flex;gap:5px;align-items:center">
+          <!-- Replace URL below with your Iress web-portal link for AUDGBP -->
+          <a href="https://iress.com" target="_blank" class="pill">Iress ↗</a>
+        </div>
+      </div>
+      <div class="big" id="audgbp-p">—</div>
+      <div class="chg fl" id="audgbp-c">—</div>
+      <div class="lbl">1 AUD = ? GBP</div>
+    </div>
+
+    <!-- AUDUSD -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">AUD / USD</div>
+          <div class="card-sub">Iress: AUDUSD.FX</div>
+        </div>
+        <a href="https://iress.com" target="_blank" class="pill">Iress ↗</a>
+      </div>
+      <div class="big" id="audusd-p">—</div>
+      <div class="chg fl" id="audusd-c">—</div>
+      <div class="lbl">1 AUD = ? USD</div>
+    </div>
+
+    <!-- CNYUSD -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">CNY / USD</div>
+          <div class="card-sub">Chinese Yuan → US Dollar</div>
+        </div>
+        <span class="pill">Yahoo Finance</span>
+      </div>
+      <div class="big" id="cnyusd-p">—</div>
+      <div class="chg fl" id="cnyusd-c">—</div>
+      <div class="lbl">1 CNY = ? USD</div>
+    </div>
+
+  </div>
+</div><!-- /FX -->
+
+<!-- ════════════════════ EQUITY WATCH ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--green)"></div>
+    <span class="sec-title">Equity Watch</span>
+  </div>
+  <div class="g2">
+
+    <!-- Atlantic Lithium ALL.L -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">Atlantic Lithium</div>
+          <div class="card-sub">ALL.L · London Stock Exchange (AIM)</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <a href="https://www.londonstockexchange.com/stock/ALL/atlantic-lithium-ltd" target="_blank" class="pill">LSE ↗</a>
+          <a href="https://www.google.com/finance/quote/ALL:LON" target="_blank" class="pill">GFinance ↗</a>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:8px">
+        <div>
+          <div class="big" id="all-p">—</div>
+          <div class="chg fl" id="all-c">—</div>
+          <div class="lbl">GBX (pence sterling)</div>
+        </div>
+        <div>
+          <div class="ch-lbl">Today</div>
+          <div class="ch-wrap" style="height:80px"><div id="tv-all-today"></div></div>
+        </div>
+      </div>
+    </div>
+
+    <!-- BHP NYSE CDI -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">BHP Group Limited</div>
+          <div class="card-sub">BHP · NYSE CDI · 1 ADR = 2 ASX shares</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <a href="https://www.google.com/finance/quote/BHP:NYSE" target="_blank" class="pill">Google Finance ↗</a>
+          <a href="https://finance.yahoo.com/quote/BHP" target="_blank" class="pill">Yahoo ↗</a>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:10px">
+        <div>
+          <div class="lbl">NYSE Price (USD)</div>
+          <div class="big" id="bhp-p">—</div>
+          <div class="chg fl" id="bhp-c">—</div>
+        </div>
+        <div>
+          <div class="lbl">Day Move</div>
+          <div class="med" id="bhp-mov">—</div>
+          <div class="chg fl" id="bhp-movpct">—</div>
+        </div>
+        <div class="cvt">
+          <div class="cvt-lbl">AUD Equiv<br><span style="font-size:9px">(÷2 ÷ AUDUSD)</span></div>
+          <div class="cvt-val" id="bhp-aud">—</div>
+          <div class="lbl">~ASX A$</div>
+        </div>
+      </div>
+      <div style="margin-top:9px">
+        <div class="ch-lbl">BHP NYSE – Today</div>
+        <div class="ch-wrap" style="height:90px"><div id="tv-bhp-today"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /Equity -->
+
+<!-- ════════════════════ METALS ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--gold)"></div>
+    <span class="sec-title">Metals — Gold &amp; Copper</span>
+    <a href="https://www.kitco.com" target="_blank" class="sec-sub" style="text-decoration:none">via Kitco ↗</a>
+  </div>
+
+  <!-- GOLD -->
+  <div class="card" style="margin-bottom:10px">
+    <div class="card-hdr">
+      <div>
+        <div class="card-lbl">Gold — XAU/USD</div>
+        <div class="card-sub">Spot Price · USD per troy oz</div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <a href="https://www.kitco.com/price/precious-metals/" target="_blank" class="pill pill-gold">Kitco Live ↗</a>
+        <span class="pill pill-gold">XAU</span>
+      </div>
+    </div>
+    <div class="metal-layout">
+      <div>
+        <div class="big" id="gold-p">—</div>
+        <div class="chg fl" id="gold-c">—</div>
+        <div class="lbl">USD / troy oz</div>
+        <div style="margin-top:9px;font-size:11px">
+          <a href="https://www.kitco.com/charts/live-gold.html" target="_blank" style="color:var(--gold)">Kitco Live Chart ↗</a><br>
+          <a href="https://www.kitco.com/price/precious-metals/" target="_blank" style="color:var(--text2);font-size:10px">Kitco Gold Page ↗</a>
+        </div>
+      </div>
+      <div>
+        <div class="ch-lbl">24 Hour (Kitco / TradingView)</div>
+        <div class="ch-wrap" style="height:180px"><div id="tv-gold-1d"></div></div>
+      </div>
+      <div>
+        <div class="ch-lbl">3 Month</div>
+        <div class="ch-wrap" style="height:180px"><div id="tv-gold-3m"></div></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- COPPER -->
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-lbl">Copper — HG / COMEX</div>
+        <div class="card-sub">Front Month Futures · USD per lb</div>
+      </div>
+      <div style="display:flex;gap:5px">
+        <a href="https://www.kitco.com/price/copper/" target="_blank" class="pill" style="background:rgba(200,118,42,.12);color:var(--copper)">Kitco Live ↗</a>
+        <span class="pill" style="background:rgba(200,118,42,.12);color:var(--copper)">Cu</span>
+      </div>
+    </div>
+    <div class="metal-layout">
+      <div>
+        <div class="big" id="cu-p">—</div>
+        <div class="chg fl" id="cu-c">—</div>
+        <div class="lbl">USD / lb</div>
+        <div style="margin-top:9px;font-size:11px">
+          <a href="https://www.kitco.com/price/copper/" target="_blank" style="color:var(--copper)">Kitco Live Chart ↗</a><br>
+          <a href="https://www.kitco.com/charts/copper.html" target="_blank" style="color:var(--text2);font-size:10px">Kitco Copper Page ↗</a>
+        </div>
+      </div>
+      <div>
+        <div class="ch-lbl">24 Hour (Kitco / TradingView)</div>
+        <div class="ch-wrap" style="height:180px"><div id="tv-cu-1d"></div></div>
+      </div>
+      <div>
+        <div class="ch-lbl">3 Month</div>
+        <div class="ch-wrap" style="height:180px"><div id="tv-cu-3m"></div></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /Metals -->
+
+<!-- ════════════════════ HARD COKING COAL ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--text2)"></div>
+    <span class="sec-title">Hard Coking Coal</span>
+  </div>
+  <div class="g2">
+
+    <!-- DCE JM2609 -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">DCE Coking Coal — JM2609</div>
+          <div class="card-sub">Dalian Commodity Exchange · Sep 2026 Contract</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <a href="http://www.dce.com.cn/DCE/futures/coking_coal/index.html" target="_blank" class="pill">DCE ↗</a>
+          <a href="https://www.tradingview.com/chart/?symbol=DCE%3AJM2609" target="_blank" class="pill">TV ↗</a>
+        </div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:9px">
+        <div>
+          <div class="lbl">CNY / tonne (live in chart below)</div>
+          <div class="med" id="jm-cny">—</div>
+          <div class="chg fl" id="jm-cny-c">—</div>
+        </div>
+        <div class="cvt">
+          <div class="cvt-lbl">USD Equiv <span style="font-size:9px">(× CNY/USD rate)</span></div>
+          <div class="cvt-val" id="jm-usd">—</div>
+          <div class="lbl">USD / tonne</div>
+        </div>
+      </div>
+      <div class="coal-charts">
+        <div>
+          <div class="ch-lbl">Realtime (Intraday)</div>
+          <div class="ch-wrap" style="height:170px"><div id="tv-jm-rt"></div></div>
+        </div>
+        <div>
+          <div class="ch-lbl">Day Chart (Daily bars)</div>
+          <div class="ch-wrap" style="height:170px"><div id="tv-jm-day"></div></div>
+        </div>
+      </div>
+      <div style="font-size:10px;color:var(--text3);margin-top:6px">
+        ⓘ CNY price sourced from TradingView widget above. USD conversion uses live CNY/USD rate.
+      </div>
+    </div>
+
+    <!-- SGX PLVHCC -->
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">SGX PLVHCC FOB Gladstone</div>
+          <div class="card-sub">Premium Low-Vol HCC · Most Liquid Futures Contract</div>
+        </div>
+        <a href="https://www.sgx.com/derivatives/products/coking-coal" target="_blank" class="pill">SGX ↗</a>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:9px">
+        <div>
+          <div class="lbl">USD / tonne (front month)</div>
+          <div class="med" id="sgx-p">—</div>
+          <div class="chg fl" id="sgx-c">—</div>
+        </div>
+        <div class="cvt" style="border-color:rgba(63,185,80,.2);background:rgba(63,185,80,.04)">
+          <div class="cvt-lbl">vs DCE JM (USD)</div>
+          <div class="cvt-val" id="sgx-spread" style="color:var(--green)">—</div>
+          <div class="lbl">SGX minus DCE spread</div>
+        </div>
+      </div>
+      <div class="ch-wrap" style="height:170px"><div id="tv-sgx-coal"></div></div>
+      <div class="info-box">
+        <div style="font-size:10px;color:var(--text2);font-weight:600">SGX Coking Coal Resources</div>
+        <a href="https://www.sgx.com/derivatives/products/coking-coal" target="_blank">SGX PLVHCC Product Page ↗</a>
+        <a href="https://www.sgx.com/research-education/market-data" target="_blank">SGX Market Data ↗</a>
+        <a href="https://www.argusmedia.com/en/methodology/argus-coal-daily-international/hard-coking-coal" target="_blank">Argus HCC Benchmark Pricing ↗</a>
+        <a href="https://www.spglobal.com/commodityinsights/en/market-insights/latest-news/coal/coking-coal" target="_blank">Platts Coking Coal ↗</a>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /Coal -->
+
+<!-- ════════════════════ GDXJ ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--gold)"></div>
+    <span class="sec-title">GDXJ — VanEck Junior Gold Miners ETF</span>
+    <a href="https://www.google.com/finance/quote/GDXJ:NYSE" target="_blank" class="sec-sub" style="text-decoration:none">Google Finance ↗</a>
+  </div>
+  <div class="card">
+    <div class="card-hdr">
+      <div>
+        <div class="card-lbl">GDXJ · NYSE Arca</div>
+        <div class="card-sub">VanEck Junior Gold Miners ETF</div>
+      </div>
+      <div style="display:flex;align-items:center;gap:12px">
+        <div style="text-align:right">
+          <div class="med" id="gdxj-p">—</div>
+          <div class="chg fl" id="gdxj-c">—</div>
+        </div>
+        <a href="https://finance.yahoo.com/quote/GDXJ" target="_blank" class="pill">Yahoo ↗</a>
+      </div>
+    </div>
+    <div class="g2">
+      <div>
+        <div class="ch-lbl">Last Week (5 Days)</div>
+        <div class="ch-wrap" style="height:210px"><div id="tv-gdxj-5d"></div></div>
+      </div>
+      <div>
+        <div class="ch-lbl">Last Month (1 Month)</div>
+        <div class="ch-wrap" style="height:210px"><div id="tv-gdxj-1m"></div></div>
+      </div>
+    </div>
+  </div>
+</div><!-- /GDXJ -->
+
+<!-- ════════════════════ HOT COPPER ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--red)"></div>
+    <span class="sec-title">Hot Copper — ASX Community</span>
+    <a href="https://hotcopper.com.au" target="_blank" class="sec-sub" style="text-decoration:none">hotcopper.com.au ↗</a>
+  </div>
+  <div class="card">
+    <div style="font-size:11px;color:var(--text2);margin-bottom:10px">
+      Click a ticker to view recent community posts. Attempting to load latest threads…
+    </div>
+    <div class="hc-grid">
+      <!-- Populated by JS -->
+    </div>
+    <div id="hc-posts">
+      <div style="color:var(--text3);font-size:11px;font-style:italic">Loading Hot Copper posts…</div>
+    </div>
+  </div>
+</div><!-- /HC -->
+
+<!-- ════════════════════ ASX ANNOUNCEMENTS ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--green)"></div>
+    <span class="sec-title">ASX Announcements — Last 48 Hours</span>
+    <a href="https://www.asx.com.au/markets/trade-our-cash-market/announcements.htm" target="_blank" class="sec-sub" style="text-decoration:none">asx.com.au ↗</a>
+  </div>
+  <div class="card">
+    <div id="asx-anns">
+      <div style="color:var(--text3);font-size:11px;font-style:italic">Loading ASX announcements…</div>
+    </div>
+  </div>
+</div><!-- /ASX anns -->
+
+<!-- ════════════════════ SPI200 FUTURES ════════════════════ -->
+<div class="sec">
+  <div class="sec-hdr">
+    <div class="sec-dot" style="background:var(--blue)"></div>
+    <span class="sec-title">ASX 200 Futures — SPI200</span>
+    <a href="https://www.asx.com.au/markets/futures/spi-200-futures" target="_blank" class="sec-sub" style="text-decoration:none">ASX SPI200 ↗</a>
+  </div>
+  <div class="g2">
+
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">SPI200 Futures Continuous</div>
+          <div class="card-sub">ASX/SFE · S&amp;P/ASX 200 Front Month</div>
+        </div>
+        <div style="display:flex;gap:5px">
+          <a href="https://www.asx.com.au/markets/futures/spi-200-futures" target="_blank" class="pill">ASX ↗</a>
+          <a href="https://www.tradingview.com/chart/?symbol=ASX%3ASP1%21" target="_blank" class="pill">TV ↗</a>
+        </div>
+      </div>
+      <div class="med" id="spi-p">—</div>
+      <div class="chg fl" id="spi-c">—</div>
+      <div class="lbl">SPI200 (SP1! continuous)</div>
+      <div style="margin-top:9px">
+        <div class="ch-wrap" style="height:200px"><div id="tv-spi"></div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="card-hdr">
+        <div>
+          <div class="card-lbl">S&amp;P/ASX 200 Cash Index</div>
+          <div class="card-sub">XJO · ASX Cash</div>
+        </div>
+        <a href="https://www.asx.com.au/markets/indices/asx-equity-indices" target="_blank" class="pill">ASX ↗</a>
+      </div>
+      <div class="med" id="xjo-p">—</div>
+      <div class="chg fl" id="xjo-c">—</div>
+      <div class="lbl">S&amp;P/ASX 200 Index</div>
+      <div style="margin-top:9px">
+        <div class="ch-wrap" style="height:200px"><div id="tv-xjo"></div></div>
+      </div>
+    </div>
+
+  </div>
+</div><!-- /SPI200 -->
+
+</div><!-- /wrap -->
+
+<div class="foot">
+  Morning Dashboard &nbsp;·&nbsp; Prices: Yahoo Finance / TradingView &nbsp;·&nbsp;
+  Charts: TradingView &nbsp;·&nbsp; Metals: Kitco &nbsp;·&nbsp;
+  Community: Hot Copper &nbsp;·&nbsp; Filings: ASX &nbsp;·&nbsp;
+  Last refresh: <span id="lastRefresh">—</span>
+</div>
+
+<script src="https://s3.tradingview.com/tv.js"></script>
+
+<script>
+const PROXY   = 'https://api.allorigins.win/get?url=';
+const YF_BASE = 'https://query1.finance.yahoo.com/v8/finance/chart/';
+const ASX_ANN = 'https://www.asx.com.au/asx/1/company/';
+
+const HC_TICKERS = ['AIS','A11','DEM','CRN','DGR','AUE','CST','TTM','TEG','NPM',
+                    'STO','LKO','PVT','ANG','GBR','LTP','MML','LCL'];
+
+function n(v, dp=2) {
+  if (v == null || isNaN(v)) return '—';
+  return Number(v).toLocaleString('en-US', {minimumFractionDigits:dp, maximumFractionDigits:dp});
+}
+
+function setEl(id, html) {
+  const el = document.getElementById(id);
+  if (el) el.innerHTML = html;
+}
+
+function setPrice(idP, idC, price, prev, dpP=2, prefix='') {
+  if (!price) { setEl(idP,'—'); setEl(idC,'—'); return; }
+  setEl(idP, prefix + n(price, dpP));
+  if (prev != null) {
+    const diff = price - prev, pct = (diff/prev)*100;
+    const cls = diff>0?'up':diff<0?'dn':'fl';
+    const sign = diff>=0?'+':'';
+    setEl(idC, `<span class="chg ${cls}">${sign}${n(diff,dpP)} (${sign}${n(pct,2)}%)</span>`);
+  }
+}
+
+async function yf(sym) {
+  const url = `${YF_BASE}${encodeURIComponent(sym)}?interval=1d&range=2d`;
+  const resp = await fetch(PROXY + encodeURIComponent(url));
+  const j    = await resp.json();
+  const d    = JSON.parse(j.contents);
+  const meta = d.chart.result[0].meta;
+  return {
+    price:   meta.regularMarketPrice,
+    prev:    meta.chartPreviousClose ?? meta.previousClose,
+    open:    meta.regularMarketOpen,
+    change:  meta.regularMarketPrice - (meta.chartPreviousClose ?? meta.previousClose),
+    pct:     (meta.regularMarketPrice / (meta.chartPreviousClose ?? meta.previousClose) - 1) * 100
+  };
+}
+
+function updateClock() {
+  const now  = new Date();
+  const aest = new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).format(now);
+  const utc  = now.toUTCString().slice(17,25);
+  const date = new Intl.DateTimeFormat('en-AU',{timeZone:'Australia/Sydney',weekday:'long',year:'numeric',month:'long',day:'numeric'}).format(now);
+  setEl('clockDisp', aest);
+  setEl('utcDisp', utc + ' UTC');
+  setEl('dateDisp', date + ' AEST');
+}
+setInterval(updateClock, 1000);
+updateClock();
+
+let _audusd = null;
+let _cnyusd = null;
+let _jmCny  = null;
+
+async function loadFX() {
+  try {
+    const [audgbp, audusd, cnyusd] = await Promise.all([
+      yf('AUDGBP=X'), yf('AUDUSD=X'), yf('CNYUSD=X')
+    ]);
+    _audusd = audusd.price;
+    _cnyusd = cnyusd.price;
+    setPrice('audgbp-p','audgbp-c', audgbp.price, audgbp.prev, 4);
+    setPrice('audusd-p','audusd-c', audusd.price, audusd.prev, 4);
+    setPrice('cnyusd-p','cnyusd-c', cnyusd.price, cnyusd.prev, 6);
+    const now = new Date().toLocaleTimeString('en-AU',{hour:'2-digit',minute:'2-digit',second:'2-digit',timeZoneName:'short'});
+    setEl('fxUpdate', 'updated ' + now);
+    calcBHP();
+    calcJMUSD();
+  } catch(e) {
+    setEl('fxUpdate', 'fetch error');
+    console.error('FX error:', e);
+  }
+}
+
+let _bhpUsd = null;
+
+async function loadStocks() {
+  try {
+    const [all, bhp, gdxj] = await Promise.all([
+      yf('ALL.L'), yf('BHP'), yf('GDXJ')
+    ]);
+    setPrice('all-p','all-c', all.price, all.prev, 2, '');
+    _bhpUsd = bhp.price;
+    setPrice('bhp-p','bhp-c', bhp.price, bhp.prev, 2, '$');
+    if (bhp.prev) {
+      const mov = bhp.price - bhp.prev, mpct = (mov/bhp.prev)*100;
+      const cls = mov>=0?'up':'dn', sign=mov>=0?'+':'';
+      setEl('bhp-mov',    `<span class="${cls}">${sign}$${n(mov,2)}</span>`);
+      setEl('bhp-movpct', `<span class="chg ${cls}">${sign}${n(mpct,2)}%</span>`);
+    }
+    calcBHP();
+    setPrice('gdxj-p','gdxj-c', gdxj.price, gdxj.prev, 2, '$');
+  } catch(e) {
+    console.error('Stocks error:', e);
+  }
+}
+
+function calcBHP() {
+  if (_bhpUsd && _audusd && _audusd > 0) {
+    const aud = _bhpUsd / 2 / _audusd;
+    setEl('bhp-aud', `A$${n(aud,2)}`);
+  }
+}
+
+function calcJMUSD() {
+  if (_jmCny && _cnyusd && _cnyusd > 0) {
+    const usd = _jmCny * _cnyusd;
+    setEl('jm-usd', `$${n(usd,1)}`);
+  }
+}
+
+async function loadMetals() {
+  try {
+    const [gold, copper] = await Promise.all([yf('GC=F'), yf('HG=F')]);
+    setPrice('gold-p','gold-c', gold.price,   gold.prev,   2, '$');
+    setPrice('cu-p',  'cu-c',   copper.price, copper.prev, 4, '$');
+  } catch(e) {
+    console.error('Metals error:', e);
+  }
+}
+
+async function loadIndices() {
+  try {
+    const xjo = await yf('^AXJO');
+    setPrice('xjo-p','xjo-c', xjo.price, xjo.prev, 1);
+  } catch(e) {
+    console.error('Index error:', e);
+  }
+}
+
+function miniChart(container, symbol, range, color) {
+  try {
+    new TradingView.MiniChart({
+      container_id: container,
+      symbol, width:'100%', height:'100%',
+      dateRange: range || '1D',
+      trendLineColor:  color || '#58a6ff',
+      underLineColor: 'rgba(88,166,255,0.1)',
+      isTransparent: true, colorTheme: 'dark', locale: 'en',
+    });
+  } catch(e) { console.warn('MiniChart', container, e); }
+}
+
+function advChart(container, symbol, interval, range, height) {
+  try {
+    new TradingView.widget({
+      container_id: container,
+      symbol, interval,
+      width: '100%', height: height||170,
+      timezone: 'Australia/Sydney',
+      theme: 'dark', style: '1', locale: 'en',
+      toolbar_bg: '#1c2128',
+      enable_publishing: false,
+      hide_side_toolbar: true,
+      hide_top_toolbar: false,
+      save_image: false,
+      range,
+      allow_symbol_change: false,
+      hide_legend: false,
+    });
+  } catch(e) { console.warn('advChart', container, e); }
+}
+
+function initCharts() {
+  miniChart('tv-all-today', 'LSE:ALL',    '1D', '#3fb950');
+  miniChart('tv-bhp-today', 'NYSE:BHP',   '1D', '#58a6ff');
+  advChart('tv-gold-1d',   'TVC:GOLD',   '5',  '1D',  180);
+  advChart('tv-gold-3m',   'TVC:GOLD',   'D',  '3M',  180);
+  advChart('tv-cu-1d',     'COMEX:HG1!', '5',  '1D',  180);
+  advChart('tv-cu-3m',     'COMEX:HG1!', 'D',  '3M',  180);
+  advChart('tv-jm-rt',     'DCE:JM2609', '5',  '1D',  170);
+  advChart('tv-jm-day',    'DCE:JM2609', 'D',  '3M',  170);
+  advChart('tv-sgx-coal',  'DCE:JM1!',   'D',  '6M',  170);
+  advChart('tv-gdxj-5d',   'AMEX:GDXJ',  'H',  '5D',  210);
+  advChart('tv-gdxj-1m',   'AMEX:GDXJ',  'D',  '1M',  210);
+  advChart('tv-spi',       'ASX:SP1!',   'D',  '3M',  200);
+  advChart('tv-xjo',       'ASX:XJO',    'D',  '3M',  200);
+}
+
+function buildHCGrid() {
+  const grid = document.querySelector('.hc-grid');
+  if (!grid) return;
+  grid.innerHTML = HC_TICKERS.map(t => `
+    <a class="hc-tile" href="https://hotcopper.com.au/asx/${t.toLowerCase()}/" target="_blank" rel="noopener">
+      <div class="hc-code">${t}</div>
+      <div class="hc-sub">ASX · HC ↗</div>
+    </a>`).join('');
+}
+
+async function loadHCPosts() {
+  const postsDiv = document.getElementById('hc-posts');
+  const allPosts = [];
+  const SAMPLE = HC_TICKERS.slice(0, 9);
+  await Promise.allSettled(SAMPLE.map(async ticker => {
+    try {
+      const rssUrl = `https://hotcopper.com.au/data/asx/${ticker.toLowerCase()}.rss`;
+      const resp   = await fetch(PROXY + encodeURIComponent(rssUrl));
+      const j      = await resp.json();
+      const parser = new DOMParser();
+      const doc    = parser.parseFromString(j.contents, 'application/xml');
+      Array.from(doc.querySelectorAll('item')).slice(0,2).forEach(item => {
+        const title   = item.querySelector('title')?.textContent?.trim() || '';
+        const link    = item.querySelector('link')?.textContent?.trim() || item.querySelector('guid')?.textContent?.trim() || '#';
+        const pubDate = item.querySelector('pubDate')?.textContent?.trim() || '';
+        const dts     = pubDate ? new Date(pubDate) : null;
+        if (!dts || (Date.now() - dts) < 48*3600*1000) {
+          allPosts.push({ ticker, title, link, date: dts });
+        }
+      });
+    } catch {}
+  }));
+
+  if (allPosts.length === 0) {
+    postsDiv.innerHTML = `
+      <div style="font-size:11px;color:var(--text3);padding:8px 0">
+        Live RSS loading unavailable — click a ticker above to view posts on Hot Copper.
+      </div>
+      <div style="margin-top:8px;display:flex;flex-wrap:wrap;gap:6px">
+        ${HC_TICKERS.map(t=>`<a href="https://hotcopper.com.au/asx/${t.toLowerCase()}/" target="_blank" class="pill" style="font-size:11px">${t} ↗</a>`).join('')}
+      </div>`;
+    return;
+  }
+
+  allPosts.sort((a,b)=> (b.date||0) - (a.date||0));
+  postsDiv.innerHTML = `<div class="sep"></div>
+    <div style="font-size:10px;color:var(--text2);font-weight:600;margin-bottom:6px;text-transform:uppercase;letter-spacing:.5px">Recent Posts (last 48 hrs)</div>
+    ${allPosts.map(p=>`
+      <div class="ann-item">
+        <span class="ann-code">${p.ticker}</span>
+        <div class="ann-body">
+          <div class="ann-title"><a href="${p.link}" target="_blank" rel="noopener">${p.title}</a></div>
+          <div class="ann-meta">${p.date ? p.date.toLocaleString('en-AU',{timeZone:'Australia/Sydney'}) : ''} · Hot Copper</div>
+        </div>
+      </div>`).join('')}`;
+}
+
+async function loadASXAnnouncements() {
+  const div = document.getElementById('asx-anns');
+  const cutoff = Date.now() - 48*3600*1000;
+  const allAnns = [];
+
+  await Promise.allSettled(HC_TICKERS.map(async ticker => {
+    try {
+      const url  = `${ASX_ANN}${ticker}/announcements?count=10&market_sensitive=false`;
+      const resp = await fetch(PROXY + encodeURIComponent(url));
+      const j    = await resp.json();
+      const data = JSON.parse(j.contents);
+      (data.data || []).forEach(ann => {
+        const dt = new Date(ann.document_release_date);
+        if (dt.getTime() > cutoff) {
+          allAnns.push({
+            ticker,
+            title:     ann.header,
+            url:       ann.url || ('https://www.asx.com.au' + (ann.relative_url||'')),
+            date:      dt,
+            sensitive: ann.market_sensitive,
+            pages:     ann.number_of_pages,
+          });
+        }
+      });
+    } catch {}
+  }));
+
+  if (allAnns.length === 0) {
+    div.innerHTML = `
+      <div style="font-size:11px;color:var(--text3);padding:4px 0">No announcements fetched — check directly:</div>
+      <div style="display:flex;flex-wrap:wrap;gap:6px;margin-top:8px">
+        ${HC_TICKERS.map(t=>`<a href="https://www.asx.com.au/asx/statistics/announcements.do?by=asxCode&asxCode=${t}" target="_blank" class="pill pill-green" style="font-size:11px">${t} ↗</a>`).join('')}
+      </div>`;
+    return;
+  }
+
+  allAnns.sort((a,b)=> b.date - a.date);
+  div.innerHTML = allAnns.map(a => `
+    <div class="ann-item">
+      <span class="ann-code">${a.ticker}</span>
+      <div class="ann-body">
+        <div class="ann-title">
+          <a href="${a.url}" target="_blank" rel="noopener">${a.title}</a>
+          ${a.sensitive ? '<span class="ann-sens">Market Sensitive</span>' : ''}
+        </div>
+        <div class="ann-meta">
+          ${a.date.toLocaleString('en-AU',{timeZone:'Australia/Sydney',year:'numeric',month:'short',day:'numeric',hour:'2-digit',minute:'2-digit',timeZoneName:'short'})}
+          ${a.pages ? '&nbsp;·&nbsp;' + a.pages + ' page' + (a.pages>1?'s':'') : ''}
+        </div>
+      </div>
+    </div>`).join('');
+}
+
+async function refreshAll() {
+  setEl('lastRefresh', new Date().toLocaleTimeString('en-AU',{timeZoneName:'short'}));
+  await Promise.allSettled([loadFX(), loadStocks(), loadMetals(), loadIndices()]);
+  calcBHP();
+  calcJMUSD();
+}
+
+document.addEventListener('DOMContentLoaded', () => {
+  buildHCGrid();
+  initCharts();
+  refreshAll();
+  loadHCPosts();
+  loadASXAnnouncements();
+  setInterval(refreshAll, 60_000);
+});
+
+document.addEventListener('visibilitychange', () => {
+  if (document.visibilityState === 'visible') refreshAll();
+});
+</script>
+</body>
+</html>
