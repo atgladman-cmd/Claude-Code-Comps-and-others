@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="app_name">Claude for Polestar</string>
+    <string name="subtitle">Voice assistant powered by Claude AI</string>
+
+    <!-- Setup screen -->
+    <string name="api_key_label">Anthropic API Key</string>
+    <string name="api_key_hint">sk-ant-…</string>
+    <string name="save_key">Save key</string>
+    <string name="set_default_assistant">Set as default digital assistant →</string>
+    <string name="test_assistant">Test assistant now</string>
+
+    <string name="setup_steps_label">Setup steps</string>
+    <string name="setup_steps">1. Enter your Anthropic API key above and tap Save.\n\n2. Tap "Set as default digital assistant" and choose this app.\n\n3. Connect your phone to the Polestar 2 via Android Auto.\n\n4. Press the voice button on the steering wheel — this app will open and listen.\n\n5. Speak your question. Claude will answer aloud.</string>
+
+    <!-- Assistant screen -->
+    <string name="tap_to_start">Tap the mic to speak</string>
+    <string name="speak">Speak</string>
+    <string name="close">Close</string>
+    <string name="new_conversation">New conversation</string>
+</resources>

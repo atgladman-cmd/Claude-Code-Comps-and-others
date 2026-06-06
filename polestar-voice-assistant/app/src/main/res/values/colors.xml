@@ -1,0 +1,15 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Polestar palette -->
+    <color name="polestar_teal">#00D9C0</color>
+    <color name="polestar_teal_dark">#009E8C</color>
+    <color name="polestar_teal_translucent">#3300D9C0</color>
+
+    <!-- Backgrounds -->
+    <color name="bg_dark">#0D0D0D</color>
+    <color name="surface">#1A1A1A</color>
+
+    <!-- Text -->
+    <color name="text_primary">#F5F5F5</color>
+    <color name="text_secondary">#808080</color>
+</resources>

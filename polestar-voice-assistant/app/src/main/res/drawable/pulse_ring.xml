@@ -1,0 +1,12 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+    Pulsing ring shown around the mic button while the app is listening.
+    The teal ring animates outward via ObjectAnimator in the activity.
+-->
+<shape xmlns:android="http://schemas.android.com/apk/res/android"
+    android:shape="oval">
+    <stroke
+        android:width="2dp"
+        android:color="@color/polestar_teal_translucent" />
+    <solid android:color="@android:color/transparent" />
+</shape>
